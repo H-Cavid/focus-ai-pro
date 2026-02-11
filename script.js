@@ -19,9 +19,8 @@ const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_s
 const breakEndSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
 
 
-// Bu sətir sayt harada açılıbsa (localhost və ya vercel) həmin ünvanı avtomatik götürür
-const clientId = '96cd2fc06ef74e4aacbf711d56e292d9';
-// URL-in sonundakı slash-i silirik ki, Dashboard-dakı yeni versiya ilə eyni olsun
+// 1. Dəyişən adını dəqiq yazırıq (böyük I ilə - clientId)
+const clientId = '96cd2fc06ef74e4aacbf711d56e292d9'; 
 const redirectUri = window.location.origin.replace(/\/$/, ""); 
 
 const scopes = [
@@ -32,9 +31,8 @@ const scopes = [
     'user-read-playback-state'
 ];
 
-// Düzgün URL quruluşu
+// 2. URL daxilində dəyişəni eyni adla çağırırıq: ${clientId}
 const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes.join(' '))}`;
-
 window.onload = () => {
     // 1. ADI SORUŞMAQ VƏ BAŞLIQLARI YENİLƏMƏK
     if (!userName) {
