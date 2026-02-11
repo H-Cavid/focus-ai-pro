@@ -42,6 +42,42 @@ body {
     -moz-transform-origin: center;
 }
 
+/* --- ANALİZ PƏNCƏRƏSİ ÜÇÜN DÜZƏLİŞ (YENİ) --- */
+/* Bu hissə analiz pəncərəsinin ekranda mərkəzlənməsini və görünməsini təmin edir */
+#analysis-modal {
+    display: none; /* JS tərəfindən idarə olunur */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(15px);
+    z-index: 99999; /* Ən üst qatda olması üçün */
+    align-items: center;
+    justify-content: center;
+}
+
+/* Analiz pəncərəsinin daxili (scale-dən təsirlənməməsi üçün 1.1 veririk) */
+.analysis-content {
+    background: #0a0a0a;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 2rem;
+    width: 90%;
+    max-width: 1000px;
+    padding: 2rem;
+    position: relative;
+    transform: scale(1.1); /* Body-dəki kiçiltməni kompensasiya edir */
+}
+
+/* Analiz daxilindəki qrafiklərin sahəsi */
+.analysis-body {
+    width: 100%;
+    min-height: 400px;
+}
+
+/* ------------------------------------------- */
+
 .glass { 
     background: rgba(255, 255, 255, 0.02); 
     backdrop-filter: blur(20px); 
@@ -126,6 +162,17 @@ button {
         padding: 1rem;
     }
 
+    #analysis-modal {
+        align-items: flex-start;
+        padding-top: 20px;
+        overflow-y: auto;
+    }
+
+    .analysis-content {
+        transform: scale(1);
+        width: 95%;
+    }
+
     .glass { 
         height: auto; 
         min-height: 350px; 
@@ -134,4 +181,55 @@ button {
     .main-timer-section { 
         order: -1; 
     }
+}
+
+/* 1. Modalın özü: Şəkildə gördüyüm pəncərənin arxa fonunu və yerini təmin edir */
+#analysis-modal, 
+.analysis-modal, 
+[id*="analysis"] { 
+    display: none; /* Bu default olaraq gizli qalır, JS 'flex' edəndə görünəcək */
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.9) !important;
+    z-index: 999999 !important; /* Hər şeyin, o cümlədən container-in üstündə */
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    transform: scale(1) !important; /* Body-dəki scale buna təsir etməsin */
+}
+
+/* 2. Pəncərənin daxili ağ/qara qutusu (Sənin şəklindəki o mərkəzi hissə) */
+.modal-content, 
+.analysis-content,
+[class*="modal-content"] {
+    background: #0f172a !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 2rem !important;
+    width: 90% !important;
+    max-width: 1000px !important;
+    padding: 2.5rem !important;
+    position: relative !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    /* Body-ni 0.92 scale etdiyin üçün bunu 1.08 edirik ki, ekranda normal ölçüdə görünsün */
+    transform: scale(1.08) !important; 
+}
+
+/* 3. Analiz daxilindəki kartlar və yazılar */
+.analysis-card, .stat-card {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-radius: 1rem !important;
+    padding: 1.5rem !important;
+}
+
+/* 4. Bağlama düyməsinin (X) işləməsi üçün */
+.close-modal, .close-btn {
+    position: absolute !important;
+    top: 20px !important;
+    right: 20px !important;
+    z-index: 1000000 !important;
+    cursor: pointer !important;
 }

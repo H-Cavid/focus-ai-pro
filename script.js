@@ -2,11 +2,9 @@ let timeLeft = 25 * 60;
 let timerId = null;
 let isBreakMode = false;
 let currentTask = "";
-let userName = localStorage.getItem('userName') || ""; // İstifadəçi adı üçün
 
 let completedSessions = parseInt(localStorage.getItem('completedSessions')) || 0;
 let sessionHistory = JSON.parse(localStorage.getItem('sessionHistory')) || [];
-let lastCheckDate = localStorage.getItem('lastCheckDate') || ""; 
 let miniDoughnut, detailedChart;
 
 // --- SƏS EFFEKTLƏRİ ---
@@ -15,48 +13,16 @@ const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_s
 const breakEndSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
 
 window.onload = () => {
-    // --- AD SORUŞMA MƏNTİQİ ---
-    if (!userName) {
-        userName = prompt("Zəhmət olmasa adınızı daxil edin:");
-        if (!userName || userName.trim() === "") userName = "İstifadəçi";
-        localStorage.setItem('userName', userName);
-    }
-    
-    // TABDAKI ADI DƏYİŞƏN HİSSƏ:
-    document.title = `${userName}'s Focus AI - Pro`;
-
-    checkNewDay(); 
-    // ... digər kodlar ...
+    initCharts();
+    loadTasks('focus');
+    loadTasks('break');
+    updateStats('day'); 
+    updateDisplay();
+    const skipBtn = document.getElementById('skipBtn');
+    if(skipBtn) skipBtn.classList.add('hidden');
+    // Brauzer səslərini əvvəlcədən yükləyirik
+    window.speechSynthesis.getVoices();
 };
-
-// --- ENTER DÜYMƏSİ FUNKSİSAYI ---
-function setupEnterKey() {
-    const focusInput = document.getElementById('focusInput');
-    const breakInput = document.getElementById('breakInput');
-
-    if (focusInput) {
-        focusInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') addTask('focus');
-        });
-    }
-
-    if (breakInput) {
-        breakInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') addTask('break');
-        });
-    }
-}
-
-// --- YENİ GÜN YOXALMASI ---
-function checkNewDay() {
-    const today = new Date().toDateString(); 
-    if (lastCheckDate !== today) {
-        completedSessions = 0; 
-        localStorage.setItem('completedSessions', 0);
-        localStorage.setItem('lastCheckDate', today);
-        lastCheckDate = today;
-    }
-}
 
 // --- 1. ANALİZ VƏ QRAFİK FUNKSİYALARI ---
 function initCharts() {
@@ -97,9 +63,8 @@ function updateStats(filter = 'day') {
         return true;
     });
 
-    const displayCount = (filter === 'day') ? completedSessions : filteredData.length;
-    document.getElementById('totalCount').innerText = displayCount;
-    document.getElementById('totalHours').innerText = `${Math.floor((displayCount*25)/60)}s ${(displayCount*25)%60}d`;
+    document.getElementById('totalCount').innerText = completedSessions;
+    document.getElementById('totalHours').innerText = `${Math.floor((completedSessions*25)/60)}s ${(completedSessions*25)%60}d`;
     
     const target = filter === 'day' ? 8 : (filter === 'month' ? 150 : 1000);
     const score = Math.min((filteredData.length / target) * 100, 100).toFixed(0);
@@ -120,34 +85,59 @@ function updateStats(filter = 'day') {
 
 function updateDetailedChart(data, filter) {
     if (!detailedChart) return;
+
     let labels = [];
     let counts = [];
 
+    // Datanın boş olub-olmadığını yoxlayırıq
+    if (!data || data.length === 0) {
+        // Data yoxdursa qrafiki sıfırlayırıq
+        detailedChart.data.labels = [];
+        detailedChart.data.datasets[0].data = [];
+        detailedChart.update();
+        return;
+    }
+
     if (filter === 'day') {
-        labels = ['00:00', '08:00', '12:00', '16:00', '20:00', '24:00'];
+        labels = ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'];
         counts = new Array(6).fill(0);
         data.forEach(item => {
-            const h = new Date(item.date).getHours();
-            counts[Math.floor(h/4)]++;
+            const itemDate = new Date(item.date);
+            if (!isNaN(itemDate)) { // Tarixin doğruluğunu yoxlayırıq
+                const h = itemDate.getHours();
+                const index = Math.floor(h / 4);
+                if (index >= 0 && index < 6) counts[index]++;
+            }
         });
     } else if (filter === 'month') {
         labels = ['Həftə 1', 'Həftə 2', 'Həftə 3', 'Həftə 4+'];
         counts = new Array(4).fill(0);
         data.forEach(item => {
-            const d = new Date(item.date).getDate();
-            counts[Math.min(Math.floor((d-1)/7), 3)]++;
+            const itemDate = new Date(item.date);
+            if (!isNaN(itemDate)) {
+                const d = itemDate.getDate();
+                const index = Math.min(Math.floor((d - 1) / 7), 3);
+                counts[index]++;
+            }
         });
     } else if (filter === 'year') {
         labels = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'İyn', 'İyl', 'Avq', 'Sen', 'Okt', 'Noy', 'Dek'];
         counts = new Array(12).fill(0);
         data.forEach(item => {
-            counts[new Date(item.date).getMonth()]++;
+            const itemDate = new Date(item.date);
+            if (!isNaN(itemDate)) {
+                const monthIndex = itemDate.getMonth();
+                counts[monthIndex]++;
+            }
         });
     }
 
+    // Chart-ı yeniləməzdən əvvəl datanı mənimsədirik
     detailedChart.data.labels = labels;
     detailedChart.data.datasets[0].data = counts;
-    detailedChart.update();
+    
+    // Vizual olaraq daha rəvan keçid üçün update çağırırıq
+    detailedChart.update('none'); 
 }
 
 function renderTaskLog(data) {
@@ -164,59 +154,65 @@ function renderTaskLog(data) {
     `).join('') || '<p class="text-center text-zinc-600 text-[10px] mt-4">Məlumat yoxdur</p>';
 }
 
-// --- 2. MOTİVASİYA ---
+// --- 2. JSON FAYLDAN MOTİVASİYA SEÇİMİ ---
 async function getFileMotivation(recommendedBreak = "") {
     const display = document.getElementById('activeTaskDisplay');
     display.innerText = "🤖 Sitat seçilir...";
+
     try {
-        const response = await fetch('quotes.json?t=' + new Date().getTime());
-        if (!response.ok) throw new Error("Fayl tapılmadı");
+        const response = await fetch('quotes.json');
         const quotes = await response.json();
         const randomIndex = Math.floor(Math.random() * quotes.length);
-        let msg = quotes[randomIndex].quote; 
-
-        // Adı motivasiyaya əlavə et
-        msg = `${userName}, ` + msg.charAt(0).toLowerCase() + msg.slice(1);
+        let msg = quotes[randomIndex];
 
         if (recommendedBreak) {
-            display.innerHTML = `
-                <div class="flex flex-col items-center gap-2 px-4 text-center">
-                    <span class="text-[13px] text-zinc-300 leading-relaxed italic">" ${msg} "</span>
-                    <div class="mt-1 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 py-1.5 px-3 rounded-full">
-                        <span class="text-[10px] uppercase tracking-wider font-bold text-emerald-400">Tövsiyə:</span>
-                        <span class="text-[11px] text-emerald-100 font-medium">${recommendedBreak}</span>
-                    </div>
-                </div>`;
-        } else {
-            display.innerHTML = `<div class="px-6 text-center"><span class="text-[13px] text-zinc-300 leading-relaxed italic">" ${msg} "</span></div>`;
+            msg += `. İndi isə istirahət vaxtıdır: ${recommendedBreak}`;
         }
+        processAiResponse(msg);
     } catch (e) {
-        display.innerHTML = `<div class="px-6 text-center"><span class="text-[13px] text-amber-400 font-bold italic">🤖 ${userName}, hər bir çətinliyin mərkəzində fürsət dayanır.</span></div>`;
+        let fallback = "Hər bir çətinliyin mərkəzində fürsət dayanır. - Albert Eynşteyn";
+        if (recommendedBreak) fallback += `. İndi ${recommendedBreak} zamanıdır.`;
+        processAiResponse(fallback);
     }
 }
 
-// --- 3. TAYMER VƏ KEÇİD ---
+function processAiResponse(msg) {
+    const display = document.getElementById('activeTaskDisplay');
+    display.innerHTML = `<span style="color:#fbbf24; font-weight:bold;">🤖 ${msg}</span>`;
+    
+    window.speechSynthesis.cancel();
+    const speech = new SpeechSynthesisUtterance(msg);
+    const voices = window.speechSynthesis.getVoices();
+    
+    let selectedVoice = voices.find(v => v.lang.includes('az')) || 
+                        voices.find(v => v.lang.includes('tr') && v.name.includes('Google')) || 
+                        voices.find(v => v.lang.includes('tr'));
+    
+    if (selectedVoice) speech.voice = selectedVoice;
+    
+    speech.lang = selectedVoice ? selectedVoice.lang : 'tr-TR';
+    speech.rate = 0.95; 
+    speech.pitch = 1.0; 
+    speech.volume = 1.0;
+
+    window.speechSynthesis.speak(speech);
+}
+
+// --- 3. TAYMER VƏ KEÇİD (SƏS EFFEKTLƏRİ İLƏ) ---
 function handleSwitch() {
     stopTimer();
+    
     if (!isBreakMode) {
         alertSound.play().catch(e => console.log("Səs çalınmadı"));
-        completedSessions++;
         
-        let breakDuration = 5; 
-        let breakTitle = "REST TIME";
-
-        if (completedSessions % 4 === 0) {
-            breakDuration = 15; 
-            breakTitle = "LONG BREAK ☕";
-        }
-
+        completedSessions++;
+        // Yeni "type" sahəsi əlavə olunur ki, exportda bilinsin
         sessionHistory.push({ 
             task: currentTask || "Adsız iş", 
             date: new Date().toISOString(),
             type: "Focus",
             duration: "25 dəq"
         });
-        
         localStorage.setItem('sessionHistory', JSON.stringify(sessionHistory));
         localStorage.setItem('completedSessions', completedSessions);
         
@@ -227,16 +223,21 @@ function handleSwitch() {
         getFileMotivation(randomBreak); 
         
         isBreakMode = true; 
-        timeLeft = breakDuration * 60; 
-        
-        document.getElementById('mainTitle').innerText = breakTitle;
+        timeLeft = 5 * 60;
+        document.getElementById('mainTitle').innerText = "REST TIME";
         document.getElementById('mainTitle').style.color = "#10b981";
     } else {
         breakEndSound.play().catch(e => console.log("Səs çalınmadı"));
+        
+        // Fasilə sessiyasını da tarixçəyə yazırıq (Opsional, amma analiz üçün yaxşıdır)
         sessionHistory.push({ 
-            task: "Fasilə", date: new Date().toISOString(), type: "Break", duration: timeLeft === 900 ? "15 dəq" : "5 dəq"
+            task: "Fasilə", 
+            date: new Date().toISOString(),
+            type: "Break",
+            duration: "5 dəq"
         });
         localStorage.setItem('sessionHistory', JSON.stringify(sessionHistory));
+
         isBreakMode = false; 
         timeLeft = 25 * 60;
         resetToFocus();
@@ -247,60 +248,92 @@ function handleSwitch() {
 function updateDisplay() {
     const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
     document.getElementById('timer').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-    const maxTime = isBreakMode ? (timeLeft > 300 ? 900 : 300) : 1500;
+    const maxTime = isBreakMode ? 300 : 1500;
     document.getElementById('progress').style.strokeDashoffset = 848 - (timeLeft / maxTime) * 848;
 }
 
 document.getElementById('startBtn').onclick = function() {
-    if (timerId) { stopTimer(); this.innerText = "DAVAM ET"; return; }
+    if (timerId) { 
+        stopTimer(); 
+        this.innerText = "DAVAM ET"; 
+        return; 
+    }
     if (!currentTask) return alert("Zəhmət olmasa bir task seçin!");
+    
     startSound.play().catch(e => console.log("Səs çalınmadı"));
+
     const skipBtn = document.getElementById('skipBtn');
     if(skipBtn) skipBtn.classList.remove('hidden');
-    timerId = setInterval(() => { timeLeft--; updateDisplay(); if(timeLeft <= 0) handleSwitch(); }, 1000);
+
+    timerId = setInterval(() => { 
+        timeLeft--; 
+        updateDisplay(); 
+        if(timeLeft <= 0) handleSwitch(); 
+    }, 1000);
     this.innerText = "DURDUR";
 };
 
 const skipBtn = document.getElementById('skipBtn');
-if(skipBtn) { skipBtn.onclick = handleSwitch; }
+if(skipBtn) {
+    skipBtn.onclick = handleSwitch;
+}
 
-function stopTimer() { clearInterval(timerId); timerId = null; document.getElementById('startBtn').innerText = "BAŞLA"; }
+function stopTimer() { 
+    clearInterval(timerId); 
+    timerId = null; 
+    document.getElementById('startBtn').innerText = "BAŞLA";
+}
 
 function resetToFocus() { 
-    isBreakMode = false; currentTask = ""; 
+    isBreakMode = false; 
+    currentTask = ""; 
     document.getElementById('activeTaskDisplay').innerText = "Növbəti işi seç";
     document.getElementById('activeTaskDisplay').style.color = "white";
     document.getElementById('mainTitle').style.color = "#3b82f6";
-    document.getElementById('mainTitle').innerText = `FOCUS AI | ${userName}`;
+    document.getElementById('mainTitle').innerText = "FOCUS AI";
     const skipBtn = document.getElementById('skipBtn');
     if(skipBtn) skipBtn.classList.add('hidden');
 }
 
-// --- 4. EXPORT ---
+// --- 4. TƏKMİLLƏŞDİRİLMİŞ EXCEL EXPORT ---
 function exportToExcel() {
-    if (sessionHistory.length === 0) return alert("Eksport etmək üçün heç bir tarixçə yoxdur!");
-    try {
-        const weekdays = ["Bazar", "Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə"];
-        const dataForExport = sessionHistory.map(item => {
-            const d = new Date(item.date);
-            return {
-                "İstifadəçi": userName,
-                "Tapşırıq": item.task,
-                "Növ": item.type || (item.task === "Fasilə" ? "Break" : "Focus"),
-                "Müddət": item.duration || "25 dəq",
-                "Tarix": d.toLocaleDateString('az-AZ'),
-                "Gün": weekdays[d.getDay()],
-                "Saat": d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-        });
-        const worksheet = XLSX.utils.json_to_sheet(dataForExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Hesabat");
-        // Fayl adına istifadəçi adını əlavə etdik
-        XLSX.writeFile(workbook, `${userName}_FocusAI_Hesabat_${new Date().toLocaleDateString('az-AZ').replace(/\//g, '-')}.xlsx`);
-    } catch (error) {
-        console.error("Export xətası:", error);
+    if (sessionHistory.length === 0) {
+        alert("Eksport etmək üçün heç bir tarixçə yoxdur!");
+        return;
     }
+
+    const weekdays = ["Bazar", "Bazar ertəsi", "Çərşənbə axşamı", "Çərşənbə", "Cümə axşamı", "Cümə", "Şənbə"];
+
+    let csvContent = "\ufeff"; 
+    // Başlıqları daha detallı edirik
+    csvContent += "Tapşırıq,Növ,Müddət,Tarix,Gün,Saat\n";
+
+    sessionHistory.forEach(item => {
+        const dateObj = new Date(item.date);
+        const dateStr = dateObj.toLocaleDateString('az-AZ');
+        const dayStr = weekdays[dateObj.getDay()];
+        const timeStr = dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        
+        const type = item.type || "Focus";
+        const duration = item.duration || "25 dəq";
+
+        csvContent += `"${item.task}","${type}","${duration}","${dateStr}","${dayStr}","${timeStr}"\n`;
+    });
+
+    const now = new Date();
+    const today = now.toLocaleDateString('az-AZ').replace(/\//g, '.');
+    const fileName = `Cavid - ${today}.csv`;
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute("href", url);
+    link.setAttribute("download", fileName);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 // --- 5. TASK İDARƏETMƏSİ ---
@@ -316,52 +349,24 @@ function addTask(type) {
 function renderTask(type, val) {
     const list = document.getElementById(type + 'List');
     const li = document.createElement('li');
-    li.className = "task-item p-3 bg-white/5 rounded-2xl mb-2 cursor-pointer border border-white/5 hover:border-blue-500/50 transition flex justify-between group items-center";
+    li.className = "p-3 bg-white/5 rounded-2xl mb-2 cursor-pointer border border-white/5 hover:border-blue-500/50 transition flex justify-between group";
+    li.innerHTML = `<span class="text-xs truncate">${val}</span><button class="text-red-500 opacity-0 group-hover:opacity-100 transition">×</button>`;
     
-    li.innerHTML = `
-        <div class="flex items-center gap-3 flex-1 overflow-hidden">
-            <div class="check-box w-4 h-4 rounded-full border border-white/20 flex-shrink-0 transition-all"></div>
-            <span class="task-text text-xs truncate transition-all">${val}</span>
-        </div>
-        <button class="text-red-500 opacity-0 group-hover:opacity-100 transition px-2 text-lg">×</button>
-    `;
-    
-    li.onclick = (e) => { 
-        if (e.target.tagName === 'BUTTON') return;
-        const span = li.querySelector('.task-text');
-        const box = li.querySelector('.check-box');
-
-        if (currentTask === val) {
-            li.classList.toggle('completed');
-            if (li.classList.contains('completed')) {
-                span.style.textDecoration = "line-through";
-                span.style.opacity = "0.4";
-                box.style.background = "#3b82f6";
-                box.style.borderColor = "#3b82f6";
-            } else {
-                span.style.textDecoration = "none";
-                span.style.opacity = "1";
-                box.style.background = "transparent";
-                box.style.borderColor = "rgba(255,255,255,0.2)";
-            }
-        } else {
-            currentTask = val; 
-            isBreakMode = (type === 'break'); 
-            timeLeft = isBreakMode ? 5 * 60 : 25 * 60; 
-            document.getElementById('activeTaskDisplay').innerText = (isBreakMode ? "İSTİRAHƏT: " : "İŞ: ") + val;
-            document.getElementById('activeTaskDisplay').style.color = isBreakMode ? "#10b981" : "#3b82f6";
-            updateDisplay();
-            document.querySelectorAll('.task-item').forEach(el => el.style.borderColor = "rgba(255,255,255,0.05)");
-            li.style.borderColor = isBreakMode ? "#10b981" : "#3b82f6";
-        }
+    li.onclick = () => { 
+        currentTask = val; 
+        isBreakMode = (type === 'break'); 
+        timeLeft = isBreakMode ? 5 * 60 : 25 * 60; 
+        document.getElementById('activeTaskDisplay').innerText = (isBreakMode ? "İSTİRAHƏT: " : "İŞ: ") + val;
+        document.getElementById('activeTaskDisplay').style.color = isBreakMode ? "#10b981" : "#3b82f6";
+        updateDisplay();
     };
 
     li.querySelector('button').onclick = (e) => {
         e.stopPropagation();
         removeTaskFromLocal(type, val);
         li.remove();
-        if(currentTask === val) resetToFocus();
     };
+
     list.appendChild(li);
 }
 
@@ -370,21 +375,53 @@ function loadTasks(t) { (JSON.parse(localStorage.getItem(t+'Tasks')) || []).forE
 function removeTaskFromLocal(t, v) { let arr = JSON.parse(localStorage.getItem(t+'Tasks')) || []; localStorage.setItem(t+'Tasks', JSON.stringify(arr.filter(i => i !== v))); }
 
 function clearAllData() { 
-    if(confirm("Bugünkü proqresi sıfırlamaq və taskları təmizləmək istəyirsiniz?")) { 
-        completedSessions = 0;
-        localStorage.setItem('completedSessions', 0);
-        localStorage.removeItem('focusTasks');
-        localStorage.removeItem('breakTasks');
-        currentTask = "";
+    if(confirm("Bütün tarixçə silinsin?")) { 
+        localStorage.clear(); 
         location.reload(); 
     } 
 }
 
+// Analiz pəncərəsini idarə etmək üçün
+function updateStats(filter = 'day') {
+    const now = new Date();
+    // Filtrləri vizual yenilə
+    document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('bg-blue-600', 'text-white'));
+    const activeBtn = document.getElementById(`btn-${filter}`);
+    if(activeBtn) activeBtn.classList.add('bg-blue-600', 'text-white');
+
+    let filteredData = sessionHistory.filter(item => {
+        const itemDate = new Date(item.date);
+        if (filter === 'day') return itemDate.toDateString() === now.toDateString();
+        if (filter === 'month') return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
+        if (filter === 'year') return itemDate.getFullYear() === now.getFullYear();
+        return true;
+    });
+
+    // Statları yenilə
+    document.getElementById('totalCount').innerText = completedSessions;
+    document.getElementById('totalHours').innerText = `${Math.floor((completedSessions*25)/60)}s ${(completedSessions*25)%60}d`;
+    
+    const target = filter === 'day' ? 8 : (filter === 'month' ? 150 : 1000);
+    const score = Math.min((filteredData.length / target) * 100, 100).toFixed(0);
+    
+    if(document.getElementById('productivityScore')) document.getElementById('productivityScore').innerText = score + "%";
+    if(document.getElementById('statusLabel')) {
+        document.getElementById('statusLabel').innerText = score > 70 ? "Yüksək" : (score > 30 ? "Stabil" : "Aşağı");
+    }
+
+    renderTaskLog(filteredData);
+    updateDetailedChart(filteredData, filter);
+    
+    if(miniDoughnut) {
+        miniDoughnut.data.datasets[0].data[0] = completedSessions;
+        miniDoughnut.update();
+    }
+}
+
+// HTML-də çatışmayan clearTasks funksiyası
 function clearTasks(type) {
-    if (confirm(type === 'focus' ? "Bütün iş taskları silinsin?" : "Bütün istirahət planı silinsin?")) {
+    if(confirm("Bu siyahını təmizləmək istəyirsiniz?")) {
         localStorage.removeItem(type + 'Tasks');
-        const list = document.getElementById(type + 'List');
-        if (list) list.innerHTML = "";
-        if ((type === 'focus' && !isBreakMode) || (type === 'break' && isBreakMode)) resetToFocus();
+        document.getElementById(type + 'List').innerHTML = "";
     }
 }
