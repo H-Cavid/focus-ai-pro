@@ -54,6 +54,23 @@
             transition: border-color 0.3s;
         }
         .setting-input:focus { border-color: #3b82f6; }
+
+        /* Musiqi paneli üçün slider stili */
+        .music-range {
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+            appearance: none;
+            outline: none;
+        }
+        .music-range::-webkit-slider-thumb {
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="p-4 lg:p-8 min-h-screen flex items-center justify-center bg-[#050505] text-white font-sans">
@@ -86,7 +103,7 @@
             </div>
 
             <div class="glass rounded-[2rem] p-6 border border-white/5 shadow-xl">
-                <h3 class="text-zinc-400 font-bold text-[10px] uppercase tracking-widest mb-4">Taymer Ayarları (Dəq)</h3>
+                <h3 class="text-zinc-400 font-bold text-[10px] uppercase tracking-widest mb-4 text-center">Taymer Ayarları (Dəq)</h3>
                 <div class="grid grid-cols-3 gap-2 mb-4">
                     <div>
                         <label class="text-[8px] text-zinc-500 block mb-1 text-center">FOKUS</label>
@@ -101,7 +118,65 @@
                         <input type="number" id="longBreakInput" value="15" class="setting-input">
                     </div>
                 </div>
-                <button onclick="applySettings()" class="w-full py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 text-[10px] font-bold rounded-xl border border-blue-500/20 transition uppercase tracking-widest">Ayarları Tətbiq Et</button>
+                <button onclick="applySettings()" class="w-full py-2 bg-blue-600/10 hover:bg-blue-600/20 text-blue-500 text-[10px] font-bold rounded-xl border border-blue-500/20 transition uppercase tracking-widest mb-4">Ayarları Tətbiq Et</button>
+                
+                <div class="border-t border-white/5 pt-4">
+                    <h3 class="text-zinc-400 font-bold text-[10px] uppercase tracking-widest mb-3 text-center">Fokus Səsləri</h3>
+                    <div class="flex justify-around items-center mb-3">
+                        <button onclick="toggleAmbient('rain')" id="btn-rain" class="text-lg opacity-40 hover:opacity-100 transition filter grayscale hover:grayscale-0">🌧️</button>
+                        <button onclick="toggleAmbient('forest')" id="btn-forest" class="text-lg opacity-40 hover:opacity-100 transition filter grayscale hover:grayscale-0">🌲</button>
+                        <button onclick="toggleAmbient('waves')" id="btn-waves" class="text-lg opacity-40 hover:opacity-100 transition filter grayscale hover:grayscale-0">🌊</button>
+                        <button onclick="toggleAmbient('lofi')" id="btn-lofi" class="text-lg opacity-40 hover:opacity-100 transition filter grayscale hover:grayscale-0">☕</button>
+                    </div>
+                    <input type="range" min="0" max="1" step="0.1" value="0.5" oninput="changeVolume(this.value)" class="w-full music-range">
+                </div>
+                <!-- <div class="border-t border-white/5 pt-4 mt-4">
+                    <h3 class="text-zinc-400 font-bold text-[10px] uppercase tracking-widest mb-3 text-center">Spotify Focus</h3>
+                    <div id="spotify-container" class="rounded-xl overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
+                        <iframe id="spotify-widget" src="https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKzbUnY3M2?utm_source=generator&theme=0" 
+                            width="100%" height="80" frameBorder="0" allowfullscreen="" 
+                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy">
+                        </iframe>
+                    </div>
+                    <button onclick="changePlaylist()" class="w-full mt-2 py-1 text-[8px] text-zinc-500 hover:text-blue-400 uppercase font-bold transition">Pleylisti Dəyiş</button>
+                </div> -->
+                <div class="spotify-pro-panel bg-black/40 p-5 rounded-[2.5rem] border border-white/5 shadow-2xl mt-4">
+                    <div class="flex items-center justify-between mb-4 px-2">
+                        <div class="flex items-center gap-2">
+                            <div id="auth-status-dot" class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                            <span id="auth-status-text" class="text-[9px] font-bold text-zinc-400 tracking-widest uppercase">Giriş edilməyib</span>
+                        </div>
+                        <div class="flex gap-3">
+                            <button onclick="setFastPlaylist('lofi')" class="text-[9px] text-zinc-500 hover:text-green-400 transition font-bold uppercase">Lo-Fi</button>
+                            <button onclick="setFastPlaylist('coding')" class="text-[9px] text-zinc-500 hover:text-blue-400 transition font-bold uppercase">Coding</button>
+                        </div>
+                    </div>
+                
+                    <div id="spotify-login-section" class="mb-4">
+                        <button onclick="window.location.href=authUrl" class="w-full py-3 bg-[#1DB954] text-black font-extrabold rounded-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase text-[10px] tracking-tighter shadow-lg shadow-green-500/20">
+                            Spotify Developer Girişi
+                        </button>
+                        <p class="text-[8px] text-zinc-600 text-center mt-2 italic px-2">Telefonda və tam idarəetmə üçün giriş mütləqdir.</p>
+                    </div>
+                
+                    <div id="player-view" class="opacity-50 pointer-events-none transition-all duration-500">
+                        <iframe id="spotify-widget" 
+                            src="https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKzbUnY3M2?utm_source=generator&theme=0" 
+                            width="100%" height="80" frameBorder="0" allowfullscreen="" 
+                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture">
+                        </iframe>
+                
+                        <div class="grid grid-cols-2 gap-2 mt-4">
+                            <button onclick="refreshWidget()" class="flex items-center justify-center gap-2 py-2.5 bg-white/5 rounded-xl text-[9px] font-bold uppercase hover:bg-white/10 transition border border-white/5">
+                                <span>🔄</span> Yenilə
+                            </button>
+                            <button onclick="changePlaylist()" class="flex items-center justify-center gap-2 py-2.5 bg-white/5 rounded-xl text-[9px] font-bold uppercase hover:bg-white/10 transition border border-white/5 text-zinc-400">
+                                <span>🎵</span> Pleylist
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
             </div>
         </div>
 

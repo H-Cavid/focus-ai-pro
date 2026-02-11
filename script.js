@@ -18,6 +18,24 @@ const startSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2
 const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg'); 
 const breakEndSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
 
+const clientId = '96cd2fc06ef74e4aacbf711d56e292d9'; 
+
+// Bu sətir sayt harada açılıbsa (localhost və ya vercel) həmin ünvanı avtomatik götürür
+const clientId = '96cd2fc06ef74e4aacbf711d56e292d9';
+// URL-in sonundakı slash-i silirik ki, Dashboard-dakı yeni versiya ilə eyni olsun
+const redirectUri = window.location.origin.replace(/\/$/, ""); 
+
+const scopes = [
+    'streaming',
+    'user-read-email',
+    'user-read-private',
+    'user-modify-playback-state',
+    'user-read-playback-state'
+];
+
+// Düzgün URL quruluşu
+const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes.join(' '))}`;
+
 window.onload = () => {
     // 1. ADI SORUŞMAQ VƏ BAŞLIQLARI YENİLƏMƏK
     if (!userName) {
@@ -617,3 +635,149 @@ function changeName() {
     }
 }
 
+// --- AMBIENT MUSIC SYSTEM ---
+let currentAmbient = null;
+let currentAmbientType = null;
+
+function toggleAmbient(type) {
+    const icons = {
+        rain: document.getElementById('btn-rain'),
+        forest: document.getElementById('document').getElementById('btn-forest'), // HTML-dəki ID-lər
+        waves: document.getElementById('btn-waves'),
+        lofi: document.getElementById('btn-lofi')
+    };
+
+    // Əgər eyni musiqiyə yenidən basılsa, söndür
+    if (currentAmbient && currentAmbientType === type) {
+        currentAmbient.pause();
+        currentAmbient = null;
+        currentAmbientType = null;
+        resetAmbientIcons();
+        return;
+    }
+
+    // Əgər başqa musiqi çalırsa, onu dayandır
+    if (currentAmbient) {
+        currentAmbient.pause();
+    }
+
+    // Səs fayllarının linkləri (Açıq mənbəli stabil linklər)
+    const audioUrls = {
+        rain: 'https://www.soundjay.com/nature/rain-01.mp3',
+        forest: 'https://www.soundjay.com/nature/forest-wind-01.mp3',
+        waves: 'https://www.soundjay.com/nature/ocean-wave-1.mp3',
+        lofi: 'https://stream.zeno.fm/0r0xa792kwzuv' // Canlı Lo-Fi stream və ya bənzər link
+    };
+
+    currentAmbient = new Audio(audioUrls[type]);
+    currentAmbient.loop = true;
+    currentAmbientType = type;
+    
+    // Slider-dəki mövcud səs səviyyəsini tətbiq et
+    const volume = document.querySelector('.music-range').value;
+    currentAmbient.volume = volume;
+
+    currentAmbient.play().catch(e => console.log("Musiqi çalınmadı: ", e));
+    
+    // Vizual olaraq aktiv ikonu seç
+    resetAmbientIcons();
+    const activeBtn = document.getElementById(`btn-${type}`);
+    if (activeBtn) {
+        activeBtn.style.opacity = "1";
+        activeBtn.style.filter = "grayscale(0%)";
+        activeBtn.classList.add('scale-125');
+    }
+}
+
+function resetAmbientIcons() {
+    ['rain', 'forest', 'waves', 'lofi'].forEach(type => {
+        const btn = document.getElementById(`btn-${type}`);
+        if (btn) {
+            btn.style.opacity = "0.4";
+            btn.style.filter = "grayscale(100%)";
+            btn.classList.remove('scale-125');
+        }
+    });
+}
+
+function changeVolume(val) {
+    if (currentAmbient) {
+        currentAmbient.volume = val;
+    }
+}
+
+function changePlaylist() {
+    const input = prompt("Spotify Playlist linkini daxil edin:", "https://open.spotify.com/playlist/37i9dQZF1DWZeKzbUnY3M2");
+    
+    if (input) {
+        let playlistID = "";
+        
+        // Linkdən ID-ni ayırmaq (Həm track, həm playlist üçün)
+        if (input.includes("playlist/")) {
+            playlistID = input.split("playlist/")[1].split("?")[0];
+        } else if (input.includes("track/")) {
+            playlistID = input.split("track/")[1].split("?")[0];
+        } else {
+            playlistID = input; // Əgər birbaşa ID daxil edilibsə
+        }
+        
+        const widget = document.getElementById('spotify-widget');
+        const link = document.getElementById('spotify-link');
+        
+        // Pleyeri yenilə
+        widget.src = `https://open.spotify.com/embed/playlist/${playlistID}?utm_source=generator&theme=0`;
+        // Linki yenilə
+        link.href = `https://open.spotify.com/playlist/${playlistID}`;
+        
+        alert("Pleylist yeniləndi! Musiqini başlatmaq üçün pleyerin üzərindəki 'Play' düyməsinə bir dəfə toxunmağınız kifayətdir.");
+    }
+}
+
+const spotifyPlaylists = {
+    lofi: '37i9dQZF1DWZeKzbUnY3M2',
+    jazz: '37i9dQZF1DXbITWG1ZUBIB',
+    coding: '37i9dQZF1DX5Ejj0EkURtP'
+};
+
+function setFastPlaylist(type) {
+    const id = spotifyPlaylists[type];
+    const widget = document.getElementById('spotify-widget');
+    widget.src = `https://open.spotify.com/embed/playlist/${id}?utm_source=generator&theme=0`;
+}
+
+// Pleyer donanda onu yenidən yükləmək üçün (DOM Refresh)
+function refreshWidget() {
+    const widget = document.getElementById('spotify-widget');
+    const currentSrc = widget.src;
+    widget.src = ''; 
+    setTimeout(() => {
+        widget.src = currentSrc;
+    }, 100);
+}
+
+let accessToken = null;
+
+function handleSpotifyAuth() {
+    const hash = window.location.hash
+        .substring(1)
+        .split('&')
+        .reduce((initial, item) => {
+            if (item) {
+                let parts = item.split('=');
+                initial[parts[0]] = decodeURIComponent(parts[1]);
+            }
+            return initial;
+        }, {});
+
+    window.location.hash = ""; // URL-i təmizləyirik
+    accessToken = hash.access_token;
+
+    if (accessToken) {
+        console.log("Spotify-a uğurla giriş edildi!");
+        document.getElementById('spotify-login-section').style.display = 'none'; // Düyməni gizlət
+        initSpotifyPlayer(); // Pleyeri işə sal
+    }
+}
+
+// Səhifə yüklənəndə yoxla
+window.onload = handleSpotifyAuth;
