@@ -1,0 +1,166 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap');
+
+.timer-font { font-family: 'Orbitron', sans-serif; }
+
+body { 
+    background: #050505; 
+    color: white; 
+    font-family: 'Inter', sans-serif; 
+    overflow: hidden; 
+    margin: 0;
+    height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.container {
+    max-width: 1300px; 
+    width: 100%;
+    height: 90vh; 
+    margin: auto; 
+    display: grid;
+    grid-template-columns: 260px 1fr 260px;
+    gap: 1.5rem;
+    padding: 1.5rem;
+    box-sizing: border-box;
+    align-items: stretch;
+    /* ZOOM 90% EFEKTİ ÜÇÜN ƏSAS HİSSƏ: */
+    transform: scale(0.9); 
+    transform-origin: center;
+}
+
+.glass { 
+    background: rgba(255, 255, 255, 0.02); 
+    backdrop-filter: blur(20px); 
+    border: 1px solid rgba(255, 255, 255, 0.08); 
+    border-radius: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    padding: 2.5rem 1.5rem 1.5rem 1.5rem;
+    box-sizing: border-box;
+    height: 100%; 
+    position: relative;
+}
+
+/* Düymə stabilizasiyası */
+button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    border: none;
+    transition: 0.3s;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.main-start-btn {
+    padding: 1rem 2rem !important;
+    font-size: 1rem !important;
+    font-weight: bold;
+    background: #2563eb;
+    color: white;
+    border-radius: 1.25rem;
+    width: 220px;
+    margin: 1.5rem auto 0;
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.2);
+}
+
+.stats-actions {
+    margin-top: auto; 
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    width: 100%;
+}
+
+.stats-actions button {
+    width: 100%;
+    padding: 0.85rem !important;
+    font-size: 11px !important;
+    font-weight: 600;
+    border-radius: 0.8rem;
+    color: white;
+}
+
+.analiz-btn { background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.2) !important; }
+.excel-btn { background: #10b981; }
+
+.clear-all-text {
+    font-size: 9px;
+    color: #444;
+    text-align: center;
+    text-transform: uppercase;
+    cursor: pointer;
+    margin-top: 1rem;
+    transition: 0.3s;
+    letter-spacing: 1px;
+}
+.clear-all-text:hover { color: #f87171; }
+
+/* Mərkəzi Taymer Bölməsi */
+.main-timer-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    flex-grow: 1;
+    padding-top: 4rem; 
+    gap: 2rem;
+}
+
+.timer-circle-container {
+    position: relative;
+    width: 300px; 
+    height: 300px;
+}
+
+#timer { font-size: 4rem !important; }
+
+/* Başlıq Dizaynı */
+.main-title {
+    font-size: 2.2rem !important;
+    letter-spacing: 0.5rem !important;
+    margin: 0 0 1rem 0 !important;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+/* Siyahılar üçün "scroll" sahəsi */
+.task-list { 
+    flex-grow: 1; 
+    max-height: 320px; /* Hündürlük artırıldı ki, scale-də çox kiçilməsin */
+    overflow-y: auto; 
+    font-size: 0.85rem;
+    margin-top: 1rem;
+}
+
+.task-list::-webkit-scrollbar { width: 4px; }
+.task-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+
+.controls-bottom {
+    display: flex;
+    gap: 12px;
+    margin-top: 1rem;
+}
+
+.skip-btn, .reset-btn {
+    padding: 0.7rem 1.4rem;
+    border-radius: 1rem;
+    font-size: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05) !important;
+}
+
+/* Panellərin başlıqları */
+.glass h3, .glass .section-header {
+    margin-top: 0 !important; 
+    margin-bottom: 1.5rem !important;
+    font-size: 0.8rem !important;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #3b82f6; /* Task başlıqlarını bir az canlandırdıq */
+}
