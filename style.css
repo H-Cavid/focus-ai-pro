@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600&display=swap');
 
-.timer-font { font-family: 'Orbitron', sans-serif; }
+.timer-font { 
+    font-family: 'Orbitron', sans-serif; 
+}
 
 body { 
     background: #050505; 
@@ -12,27 +14,31 @@ body {
     align-items: center;
     justify-content: center;
     overflow: hidden;
+
+    /* Ümumi uzaqlaşdırma */
+    transform: scale(0.92);
+    transform-origin: center;
 }
 
+/* ANA KONTEYNER */
 .container {
-    max-width: 1400px; 
+    max-width: 1600px;
     width: 100%;
-    height: 95vh; 
-    margin: auto; 
+    height: 95vh;
+    margin: auto;
     display: grid;
-    grid-template-columns: 280px 1fr 280px;
-    gap: 1.5rem;
-    padding: 1.5rem;
+    grid-template-columns: 300px 1fr 300px;
+    gap: 2rem;
+    padding: 2rem;
     box-sizing: border-box;
     align-items: stretch;
 
-    /* --- ƏSAS HİSSƏ: UZAQLAŞDIRMA --- */
-    /* Transform yerinə birbaşa zoom istifadə edirik. 
-       0.8 dəyəri brauzeri manual olaraq 80%-ə endirmək deməkdir. */
-    zoom: 0.8; 
-    
-    /* Firefox üçün (çünki Firefox zoom-u dəstəkləmir) */
-    -moz-transform: scale(0.8);
+    /* əlavə balanslı uzaqlaşdırma */
+    transform: scale(0.95);
+    transform-origin: center;
+
+    /* Firefox üçün */
+    -moz-transform: scale(0.95);
     -moz-transform-origin: center;
 }
 
@@ -49,7 +55,7 @@ body {
     position: relative;
 }
 
-/* Düymələr və s. sabit saxlanılır */
+/* BUTTONLAR */
 button {
     display: flex;
     align-items: center;
@@ -72,6 +78,7 @@ button {
     margin: 1.5rem auto 0;
 }
 
+/* TIMER SECTION */
 .main-timer-section {
     display: flex;
     flex-direction: column;
@@ -81,33 +88,50 @@ button {
     gap: 2rem;
 }
 
+/* TIMER CIRCLE – biraz kiçildildi */
 .timer-circle-container {
     position: relative;
-    width: 320px; 
-    height: 320px;
+    width: 280px;
+    height: 280px;
 }
 
-#timer { font-size: 4.5rem !important; }
+/* TIMER FONT */
+#timer { 
+    font-size: 3.8rem !important; 
+}
 
+/* TITLE */
 .main-title {
-    font-size: 2.2rem !important;
-    letter-spacing: 0.5rem !important;
+    font-size: 2rem !important;
+    letter-spacing: 0.45rem !important;
     text-transform: uppercase;
     white-space: nowrap;
 }
 
-/* --- MOBİL ÜÇÜN RESPONSİVLİK --- */
+/* --- MOBİL --- */
 @media (max-width: 1024px) {
-    body { overflow-y: auto; height: auto; padding: 20px 0; }
+    body { 
+        overflow-y: auto; 
+        height: auto; 
+        padding: 20px 0;
+        transform: scale(1);
+    }
+
     .container {
         display: flex;
         flex-direction: column;
         height: auto;
-        zoom: 1; /* Mobildə uzaqlaşdırmanı ləğv edirik */
-        -moz-transform: scale(1);
+        transform: scale(1);
         gap: 1.5rem;
         padding: 1rem;
     }
-    .glass { height: auto; min-height: 350px; }
-    .main-timer-section { order: -1; }
+
+    .glass { 
+        height: auto; 
+        min-height: 350px; 
+    }
+
+    .main-timer-section { 
+        order: -1; 
+    }
 }
