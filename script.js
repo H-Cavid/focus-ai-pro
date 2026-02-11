@@ -240,7 +240,7 @@ function handleSwitch() {
 
         if (completedSessions % 4 === 0) {
             breakDuration = 15; 
-            breakTitle = "LONG BREAK ☕";
+            breakTitle = "Uzun İstirahət vaxtı ☕";
         }
 
         sessionHistory.push({ 
