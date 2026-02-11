@@ -130,53 +130,6 @@
                     </div>
                     <input type="range" min="0" max="1" step="0.1" value="0.5" oninput="changeVolume(this.value)" class="w-full music-range">
                 </div>
-                <!-- <div class="border-t border-white/5 pt-4 mt-4">
-                    <h3 class="text-zinc-400 font-bold text-[10px] uppercase tracking-widest mb-3 text-center">Spotify Focus</h3>
-                    <div id="spotify-container" class="rounded-xl overflow-hidden opacity-80 hover:opacity-100 transition-opacity">
-                        <iframe id="spotify-widget" src="https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKzbUnY3M2?utm_source=generator&theme=0" 
-                            width="100%" height="80" frameBorder="0" allowfullscreen="" 
-                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy">
-                        </iframe>
-                    </div>
-                    <button onclick="changePlaylist()" class="w-full mt-2 py-1 text-[8px] text-zinc-500 hover:text-blue-400 uppercase font-bold transition">Pleylisti Dəyiş</button>
-                </div> -->
-                <div class="spotify-pro-panel bg-black/40 p-5 rounded-[2.5rem] border border-white/5 shadow-2xl mt-4">
-                    <div class="flex items-center justify-between mb-4 px-2">
-                        <div class="flex items-center gap-2">
-                            <div id="auth-status-dot" class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                            <span id="auth-status-text" class="text-[9px] font-bold text-zinc-400 tracking-widest uppercase">Giriş edilməyib</span>
-                        </div>
-                        <div class="flex gap-3">
-                            <button onclick="setFastPlaylist('lofi')" class="text-[9px] text-zinc-500 hover:text-green-400 transition font-bold uppercase">Lo-Fi</button>
-                            <button onclick="setFastPlaylist('coding')" class="text-[9px] text-zinc-500 hover:text-blue-400 transition font-bold uppercase">Coding</button>
-                        </div>
-                    </div>
-                
-                    <div id="spotify-login-section" class="mb-4">
-                        <button onclick="window.location.href=authUrl" class="w-full py-3 bg-[#1DB954] text-black font-extrabold rounded-2xl hover:scale-[1.02] active:scale-95 transition-all uppercase text-[10px] tracking-tighter shadow-lg shadow-green-500/20">
-                            Spotify Developer Girişi
-                        </button>
-                        <p class="text-[8px] text-zinc-600 text-center mt-2 italic px-2">Telefonda və tam idarəetmə üçün giriş mütləqdir.</p>
-                    </div>
-                
-                    <div id="player-view" class="opacity-50 pointer-events-none transition-all duration-500">
-                        <iframe id="spotify-widget" 
-                            src="https://open.spotify.com/embed/playlist/37i9dQZF1DWZeKzbUnY3M2?utm_source=generator&theme=0" 
-                            width="100%" height="80" frameBorder="0" allowfullscreen="" 
-                            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture">
-                        </iframe>
-                
-                        <div class="grid grid-cols-2 gap-2 mt-4">
-                            <button onclick="refreshWidget()" class="flex items-center justify-center gap-2 py-2.5 bg-white/5 rounded-xl text-[9px] font-bold uppercase hover:bg-white/10 transition border border-white/5">
-                                <span>🔄</span> Yenilə
-                            </button>
-                            <button onclick="changePlaylist()" class="flex items-center justify-center gap-2 py-2.5 bg-white/5 rounded-xl text-[9px] font-bold uppercase hover:bg-white/10 transition border border-white/5 text-zinc-400">
-                                <span>🎵</span> Pleylist
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
             </div>
         </div>
 
@@ -238,7 +191,7 @@
 
     <div id="statsModal" class="modal">
         <div class="glass w-full max-w-5xl rounded-[3rem] p-10 relative max-h-[90vh] overflow-hidden flex flex-col border border-white/10">
-            <button onclick="this.parentElement.parentElement.classList.remove('active')" class="absolute top-8 right-8 text-2xl text-white/50 hover:text-white">&times;</button>
+            <button onclick="this.parentElement.parentElement.classList.remove('active')" class="absolute top-8 right-8 text-2xl text-white/50 hover:text-white">×</button>
             
             <div class="flex justify-between items-end mb-8">
                 <div>
@@ -280,6 +233,51 @@
         </div>
     </div>
 
+
+    <script>
+        // 1. Real və işlək səs linkləri
+        const sounds = {
+            rain: new Audio('https://www.soundjay.com/nature/rain-01.mp3'),
+            forest: new Audio('https://www.soundjay.com/nature/forest-wind-01.mp3'),
+            waves: new Audio('https://www.soundjay.com/nature/ocean-wave-1.mp3'),
+            lofi: new Audio('https://www.soundjay.com/misc/sounds/coffee-shop-1.mp3')
+        };
+    
+        // Səsləri ilkin vəziyyətə gətiririk
+        Object.values(sounds).forEach(s => {
+            s.loop = true;
+            s.volume = 0.5;
+        });
+    
+        let activeAmbient = null;
+    
+        function toggleAmbient(type) {
+            // Elementlərin mövcudluğunu yoxlayan təhlükəsiz funksiya
+            const btn = document.getElementById(`btn-${type}`);
+            
+            if (activeAmbient === type) {
+                sounds[type].pause();
+                if(btn) btn.classList.add('grayscale', 'opacity-40');
+                activeAmbient = null;
+            } else {
+                // Əvvəlki səsi dayandır
+                if (activeAmbient) {
+                    sounds[activeAmbient].pause();
+                    const prevBtn = document.getElementById(`btn-${activeAmbient}`);
+                    if(prevBtn) prevBtn.classList.add('grayscale', 'opacity-40');
+                }
+                
+                // Yeni səsi başlat
+                sounds[type].play().catch(err => console.log("Autoplay bloklandı, klikləyin."));
+                if(btn) btn.classList.remove('grayscale', 'opacity-40');
+                activeAmbient = type;
+            }
+        }
+    
+        function changeVolume(val) {
+            Object.values(sounds).forEach(s => s.volume = val);
+        }
+    </script>
     <script src="script.js"></script>
 </body>
 </html>
