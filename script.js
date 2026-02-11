@@ -10,31 +10,54 @@ let sessionHistory = JSON.parse(localStorage.getItem('sessionHistory')) || [];
 let lastCheckDate = localStorage.getItem('lastCheckDate') || ""; 
 let miniDoughnut, detailedChart;
 
+let workTime = parseInt(localStorage.getItem('workTime')) || 25;
+let shortBreakTime = parseInt(localStorage.getItem('shortBreakTime')) || 5;
+let longBreakTime = parseInt(localStorage.getItem('longBreakTime')) || 15;
+
 const startSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2568-preview.mp3'); 
 const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg'); 
 const breakEndSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
 
 window.onload = () => {
-    // ADI SORUŞMAQ VƏ BAŞLIĞI YENİLƏMƏK (Əlavə olundu)
+    // 1. ADI SORUŞMAQ VƏ BAŞLIQLARI YENİLƏMƏK
     if (!userName) {
         userName = prompt("Zəhmət olmasa adınızı daxil edin:");
         if (userName) localStorage.setItem('userName', userName);
         else userName = "İstifadəçi";
     }
     
-    // 1. Mərkəzdəki başlığı dəyişir (şəkildə gördüyün hissə)
+    // Başlıqları yeniləyirik
     document.getElementById('mainTitle').innerText = `FOCUS AI - ${userName}`;
-        
-    // 2. Brauzer tabındakı başlığı dəyişir (sənin qeyd etdiyin hissə)
     document.title = `${userName}'s Focus AI - Pro`;
+
+    // 2. TAYMER AYARLARINI İNPUTLARA YAZDIRMAQ (YENİ HİSSƏ)
+    // Bu hissə səhifə açılan kimi daxil etdiyin rəqəmləri qutularda göstərir
+    const workInp = document.getElementById('workInputSetting');
+    const breakInp = document.getElementById('breakInputSetting');
+    const longInp = document.getElementById('longBreakInput');
+
+    if (workInp) workInp.value = workTime;
+    if (breakInp) breakInp.value = shortBreakTime;
+    if (longInp) longInp.value = longBreakTime;
+
+    // 3. İLKİN VAXTI TƏYİN ETMƏK (YENİ HİSSƏ)
+    // Əgər fasilə rejimində deyilsə, taymeri daxil edilmiş Fokus dəqiqəsinə qurur
+    if (!isBreakMode) {
+        timeLeft = workTime * 60;
+    }
+
+    // 4. MÖVCUD FUNKSİYALARI ÇAĞIRMAQ
     checkNewDay(); 
     initCharts();
     loadTasks('focus');
     loadTasks('break');
     updateStats('day'); 
-    updateDisplay();
+    updateDisplay(); // Ekranda dərhal yeni vaxtı (məsələn 25:00) göstərir
+
+    // Düyməni gizlətmək
     const skipBtn = document.getElementById('skipBtn');
     if(skipBtn) skipBtn.classList.add('hidden');
+    
     setupEnterKey();
 };
 
@@ -228,18 +251,18 @@ async function getFileMotivation(recommendedBreak = "") {
     }
 }
 
-
 function handleSwitch() {
     stopTimer();
     if (!isBreakMode) {
         alertSound.play().catch(e => console.log("Səs çalınmadı"));
         completedSessions++;
         
-        let breakDuration = 5; 
+        // Dinamik fasilə müddətləri
+        let breakDuration = shortBreakTime; // İstifadəçinin qısa fasilə ayarı
         let breakTitle = "İstirahət Vaxtı ☕";
 
         if (completedSessions % 4 === 0) {
-            breakDuration = 15; 
+            breakDuration = longBreakTime; // İstifadəçinin uzun fasilə ayarı
             breakTitle = "Uzun İstirahət vaxtı ☕";
         }
 
@@ -247,7 +270,7 @@ function handleSwitch() {
             task: currentTask || "Adsız iş", 
             date: new Date().toISOString(),
             type: "Focus",
-            duration: "25 dəq"
+            duration: `${workTime} dəq` // Dinamik fokus müddəti
         });
         
         localStorage.setItem('sessionHistory', JSON.stringify(sessionHistory));
@@ -260,22 +283,31 @@ function handleSwitch() {
         getFileMotivation(randomBreak); 
         
         isBreakMode = true; 
-        timeLeft = breakDuration * 60; 
+        timeLeft = breakDuration * 60; // Seçilmiş fasiləyə keçid
         
         document.getElementById('mainTitle').innerText = breakTitle;
         document.getElementById('mainTitle').style.color = "#10b981";
     } else {
         breakEndSound.play().catch(e => console.log("Səs çalınmadı"));
+        
+        // Fasilə tarixçəsini qeyd edirik
+        let lastBreakDuration = (completedSessions % 4 === 0) ? longBreakTime : shortBreakTime;
         sessionHistory.push({ 
-            task: "Fasilə", date: new Date().toISOString(), type: "Break", duration: timeLeft === 900 ? "15 dəq" : "5 dəq"
+            task: "Fasilə", 
+            date: new Date().toISOString(), 
+            type: "Break", 
+            duration: `${lastBreakDuration} dəq`
         });
+        
         localStorage.setItem('sessionHistory', JSON.stringify(sessionHistory));
+        
         isBreakMode = false; 
-        timeLeft = 25 * 60;
+        timeLeft = workTime * 60; // İstifadəçinin fokus vaxtına qayıdış
         resetToFocus();
     }
     updateDisplay();
 }
+
 
 function updateDisplay() {
     const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
@@ -360,6 +392,7 @@ function renderTask(type, val) {
         if (e.target.tagName === 'BUTTON') return;
         const span = li.querySelector('.task-text');
         const box = li.querySelector('.check-box');
+        
         if (currentTask === val) {
             li.classList.toggle('completed');
             if (li.classList.contains('completed')) {
@@ -376,10 +409,22 @@ function renderTask(type, val) {
         } else {
             currentTask = val; 
             isBreakMode = (type === 'break'); 
-            timeLeft = isBreakMode ? 5 * 60 : 25 * 60; 
+
+            // --- DÜZƏLİŞ BURADADIR ---
+            if (isBreakMode) {
+                // Əgər istirahət taskıdırsa, qısa fasilə vaxtını təyin edirik
+                timeLeft = shortBreakTime * 60; 
+            } else {
+                // Əgər iş taskıdırsa, ayarlar panelindəki fokus vaxtını təyin edirik
+                timeLeft = workTime * 60; 
+            }
+            // -------------------------
+
             document.getElementById('activeTaskDisplay').innerText = (isBreakMode ? "İSTİRAHƏT: " : "İŞ: ") + val;
             document.getElementById('activeTaskDisplay').style.color = isBreakMode ? "#10b981" : "#3b82f6";
+            
             updateDisplay();
+            
             document.querySelectorAll('.task-item').forEach(el => el.style.borderColor = "rgba(255,255,255,0.05)");
             li.style.borderColor = isBreakMode ? "#10b981" : "#3b82f6";
         }
@@ -426,3 +471,32 @@ function changeName() {
         location.reload(); 
     }
 }
+
+// Taymer ayarlarını yadda saxlayan funksiya
+function applySettings() {
+    workTime = parseInt(document.getElementById('workInputSetting').value);
+    shortBreakTime = parseInt(document.getElementById('breakInputSetting').value);
+    longBreakTime = parseInt(document.getElementById('longBreakInput').value);
+
+    localStorage.setItem('workTime', workTime);
+    localStorage.setItem('shortBreakTime', shortBreakTime);
+    localStorage.setItem('longBreakTime', longBreakTime);
+
+    // Əgər taymer hal-hazırda işləmirsə, dərhal vizual olaraq dəyişdir
+    if (!timerId) {
+        timeLeft = isBreakMode ? (completedSessions % 4 === 0 ? longBreakTime : shortBreakTime) * 60 : workTime * 60;
+        updateDisplay();
+    }
+    alert("Ayarlar uğurla yadda saxlanıldı!");
+}
+
+// Adı dəyişmək üçün funksiya
+function changeName() {
+    let newName = prompt("Yeni adınızı daxil edin:", userName);
+    if (newName && newName.trim() !== "") {
+        userName = newName;
+        localStorage.setItem('userName', userName);
+        location.reload(); // Səhifəni yeniləyirik ki, hər yerdə ad dəyişsin
+    }
+}
+
