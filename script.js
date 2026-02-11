@@ -253,16 +253,17 @@ async function getFileMotivation(recommendedBreak = "") {
 
 function handleSwitch() {
     stopTimer();
+    
     if (!isBreakMode) {
+        // --- İŞDƏN FASİLƏYƏ KEÇİD ---
         alertSound.play().catch(e => console.log("Səs çalınmadı"));
         completedSessions++;
         
-        // Dinamik fasilə müddətləri
-        let breakDuration = shortBreakTime; // İstifadəçinin qısa fasilə ayarı
+        let breakDuration = shortBreakTime; 
         let breakTitle = "İstirahət Vaxtı ☕";
 
         if (completedSessions % 4 === 0) {
-            breakDuration = longBreakTime; // İstifadəçinin uzun fasilə ayarı
+            breakDuration = longBreakTime; 
             breakTitle = "Uzun İstirahət vaxtı ☕";
         }
 
@@ -270,7 +271,7 @@ function handleSwitch() {
             task: currentTask || "Adsız iş", 
             date: new Date().toISOString(),
             type: "Focus",
-            duration: `${workTime} dəq` // Dinamik fokus müddəti
+            duration: `${workTime} dəq` 
         });
         
         localStorage.setItem('sessionHistory', JSON.stringify(sessionHistory));
@@ -283,14 +284,15 @@ function handleSwitch() {
         getFileMotivation(randomBreak); 
         
         isBreakMode = true; 
-        timeLeft = breakDuration * 60; // Seçilmiş fasiləyə keçid
+        timeLeft = breakDuration * 60; 
         
         document.getElementById('mainTitle').innerText = breakTitle;
         document.getElementById('mainTitle').style.color = "#10b981";
+
     } else {
+        // --- FASİLƏDƏN İŞƏ QAYIDIŞ (Yenilənmiş hissə) ---
         breakEndSound.play().catch(e => console.log("Səs çalınmadı"));
         
-        // Fasilə tarixçəsini qeyd edirik
         let lastBreakDuration = (completedSessions % 4 === 0) ? longBreakTime : shortBreakTime;
         sessionHistory.push({ 
             task: "Fasilə", 
@@ -302,9 +304,23 @@ function handleSwitch() {
         localStorage.setItem('sessionHistory', JSON.stringify(sessionHistory));
         
         isBreakMode = false; 
-        timeLeft = workTime * 60; // İstifadəçinin fokus vaxtına qayıdış
-        resetToFocus();
+        timeLeft = workTime * 60; // İstifadəçinin daxil etdiyi fokus dəqiqəsinə qayıdır
+
+        // Vizual yeniləmə: Taskı ekranda saxlayırıq
+        document.getElementById('mainTitle').innerText = `FOCUS AI - ${userName}`;
+        document.getElementById('mainTitle').style.color = "#3b82f6";
+        
+        if (currentTask) {
+            // Əgər əvvəlcədən seçilmiş task varsa, onu ekranda göstərməyə davam et
+            document.getElementById('activeTaskDisplay').innerText = "İŞ: " + currentTask;
+            document.getElementById('activeTaskDisplay').style.color = "#3b82f6";
+        }
+
+        // Keçid düyməsini gizlət
+        const skipBtn = document.getElementById('skipBtn');
+        if(skipBtn) skipBtn.classList.add('hidden');
     }
+    
     updateDisplay();
 }
 
