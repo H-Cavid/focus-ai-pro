@@ -218,6 +218,40 @@ function renderTaskLog(data) {
 //     }
 // }
 
+// async function getFileMotivation(recommendedBreak = "") {
+//     const display = document.getElementById('activeTaskDisplay');
+//     try {
+//         // Keşlənmənin qarşısını almaq üçün Date.now() əlavə edirik
+//         const response = await fetch('quotes.json?t=' + Date.now());
+        
+//         if (!response.ok) throw new Error("Fayl oxunmadı");
+        
+//         const quotes = await response.json();
+        
+//         // Random sitat seçimi
+//         const randomIndex = Math.floor(Math.random() * quotes.length);
+//         const msg = quotes[randomIndex].quote; 
+
+//         if (recommendedBreak) {
+//             display.innerHTML = `
+//                 <div class="flex flex-col items-center gap-2 px-4 text-center">
+//                     <span class="text-[13px] text-zinc-300 leading-relaxed italic">" ${msg} "</span>
+//                     <div class="mt-1 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 py-1.5 px-3 rounded-full">
+//                         <span class="text-[10px] uppercase tracking-wider font-bold text-emerald-400">Tövsiyə:</span>
+//                         <span class="text-[11px] text-emerald-100 font-medium">${recommendedBreak}</span>
+//                     </div>
+//                 </div>`;
+//         } else {
+//             display.innerHTML = `<div class="px-6 text-center"><span class="text-[13px] text-zinc-300 leading-relaxed italic">" ${msg} "</span></div>`;
+//         }
+//     } catch (e) {
+//         // Əgər fayl oxunmazsa (məsələn, birbaşa fayl kimi açdıqda), konsola baxın
+//         console.error("Sitat yükləmə xətası:", e);
+//         display.innerHTML = `<div class="px-6 text-center"><span class="text-[13px] text-amber-400 font-bold italic">🤖 Hər bir çətinliyin mərkəzində fürsət dayanır.</span></div>`;
+//     }
+// }
+
+
 async function getFileMotivation(recommendedBreak = "") {
     const display = document.getElementById('activeTaskDisplay');
     try {
@@ -233,19 +267,22 @@ async function getFileMotivation(recommendedBreak = "") {
         const msg = quotes[randomIndex].quote; 
 
         if (recommendedBreak) {
+            // BURADA DÜZƏLİŞ EDİLDİ: Obyektin daxilindəki .text xüsusiyyətini götürürük
+            // Əgər obyekt deyilsə (köhnə datadırsa), özünü göstəririk
+            const breakText = typeof recommendedBreak === 'object' ? recommendedBreak.text : recommendedBreak;
+
             display.innerHTML = `
                 <div class="flex flex-col items-center gap-2 px-4 text-center">
                     <span class="text-[13px] text-zinc-300 leading-relaxed italic">" ${msg} "</span>
                     <div class="mt-1 flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 py-1.5 px-3 rounded-full">
                         <span class="text-[10px] uppercase tracking-wider font-bold text-emerald-400">Tövsiyə:</span>
-                        <span class="text-[11px] text-emerald-100 font-medium">${recommendedBreak}</span>
+                        <span class="text-[11px] text-emerald-100 font-medium">${breakText}</span>
                     </div>
                 </div>`;
         } else {
             display.innerHTML = `<div class="px-6 text-center"><span class="text-[13px] text-zinc-300 leading-relaxed italic">" ${msg} "</span></div>`;
         }
     } catch (e) {
-        // Əgər fayl oxunmazsa (məsələn, birbaşa fayl kimi açdıqda), konsola baxın
         console.error("Sitat yükləmə xətası:", e);
         display.innerHTML = `<div class="px-6 text-center"><span class="text-[13px] text-amber-400 font-bold italic">🤖 Hər bir çətinliyin mərkəzində fürsət dayanır.</span></div>`;
     }
