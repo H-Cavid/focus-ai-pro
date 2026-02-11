@@ -259,6 +259,30 @@ function handleSwitch() {
         alertSound.play().catch(e => console.log("Səs çalınmadı"));
         completedSessions++;
         
+        // 1. Task Tərəqqisini Artırmaq (YENİ HİSSƏ)
+        if (currentTask) {
+            let focusTasks = JSON.parse(localStorage.getItem('focusTasks')) || [];
+            // Siyahıdan cari taskı adıyla tapırıq
+            let taskIndex = focusTasks.findIndex(t => (typeof t === 'object' ? t.text : t) === currentTask);
+            
+            if (taskIndex !== -1) {
+                // Əgər task hələ obyekt deyilsə, onu obyektə çeviririk (köhnə datalar üçün ehtiyat)
+                if (typeof focusTasks[taskIndex] !== 'object') {
+                    focusTasks[taskIndex] = { text: focusTasks[taskIndex], estimated: 1, actual: 0 };
+                }
+                
+                // Sessiya sayını 1 artırırıq
+                focusTasks[taskIndex].actual = (focusTasks[taskIndex].actual || 0) + 1;
+                
+                // Yaddaşı yeniləyirik
+                localStorage.setItem('focusTasks', JSON.stringify(focusTasks));
+                
+                // Siyahını ekranda vizual olaraq yeniləyirik (0/3 -> 1/3 olsun deyə)
+                document.getElementById('focusList').innerHTML = '';
+                focusTasks.forEach(t => renderTask('focus', t));
+            }
+        }
+
         let breakDuration = shortBreakTime; 
         let breakTitle = "İstirahət Vaxtı ☕";
 
@@ -290,7 +314,7 @@ function handleSwitch() {
         document.getElementById('mainTitle').style.color = "#10b981";
 
     } else {
-        // --- FASİLƏDƏN İŞƏ QAYIDIŞ (Yenilənmiş hissə) ---
+        // --- FASİLƏDƏN İŞƏ QAYIDIŞ ---
         breakEndSound.play().catch(e => console.log("Səs çalınmadı"));
         
         let lastBreakDuration = (completedSessions % 4 === 0) ? longBreakTime : shortBreakTime;
@@ -304,26 +328,22 @@ function handleSwitch() {
         localStorage.setItem('sessionHistory', JSON.stringify(sessionHistory));
         
         isBreakMode = false; 
-        timeLeft = workTime * 60; // İstifadəçinin daxil etdiyi fokus dəqiqəsinə qayıdır
+        timeLeft = workTime * 60; 
 
-        // Vizual yeniləmə: Taskı ekranda saxlayırıq
         document.getElementById('mainTitle').innerText = `FOCUS AI - ${userName}`;
         document.getElementById('mainTitle').style.color = "#3b82f6";
         
         if (currentTask) {
-            // Əgər əvvəlcədən seçilmiş task varsa, onu ekranda göstərməyə davam et
             document.getElementById('activeTaskDisplay').innerText = "İŞ: " + currentTask;
             document.getElementById('activeTaskDisplay').style.color = "#3b82f6";
         }
 
-        // Keçid düyməsini gizlət
         const skipBtn = document.getElementById('skipBtn');
         if(skipBtn) skipBtn.classList.add('hidden');
     }
     
     updateDisplay();
 }
-
 
 function updateDisplay() {
     const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
@@ -383,33 +403,79 @@ function exportToExcel() {
         console.error("Export xətası:", error);
     }
 }
-
 function addTask(type) {
     const input = document.getElementById(type + 'Input');
     const val = input.value.trim();
+    
     if (!val) return;
-    saveTaskToLocal(type, val);
-    renderTask(type, val);
+
+    // 1. Sessiya sayını soruşuruq (Yalnız 'focus' tipli tasklar üçün)
+    let estimatedSessions = 1;
+    if (type === 'focus') {
+        const est = prompt(`"${val}" üçün neçə sessiya planlayırsınız?`, "1");
+        // Əgər istifadəçi ləğv etsə və ya boş qoysa, 1 sessiya götürülür
+        estimatedSessions = (est === null || est.trim() === "") ? 1 : (parseInt(est) || 1);
+    }
+
+    // 2. Taskı obyekt formatında yaradırıq
+    const taskObj = {
+        text: val,
+        completed: false,
+        estimated: estimatedSessions,
+        actual: 0
+    };
+
+    // 3. Yaddaşa veririk (Artıq obyekt olaraq saxlanılır)
+    saveTaskToLocal(type, taskObj);
+
+    // 4. Ekranda göstəririk
+    renderTask(type, taskObj);
+
+    // Inputu təmizləyirik
     input.value = "";
 }
 
-function renderTask(type, val) {
+function saveTaskToLocal(type, taskObj) {
+    const tasks = JSON.parse(localStorage.getItem(type + 'Tasks')) || [];
+    tasks.push(taskObj); // Obyekti birbaşa massivə əlavə edirik
+    localStorage.setItem(type + 'Tasks', JSON.stringify(tasks));
+}
+
+function renderTask(type, taskInput) {
     const list = document.getElementById(type + 'List');
+    
+    // Taskın obyekt və ya sadəcə mətn olduğunu yoxlayırıq (Köhnə datalar üçün)
+    const isObject = typeof taskInput === 'object' && taskInput !== null;
+    const taskText = isObject ? taskInput.text : taskInput;
+    const estimated = isObject ? (taskInput.estimated || 1) : 1;
+    const actual = isObject ? (taskInput.actual || 0) : 0;
+
     const li = document.createElement('li');
     li.className = "task-item p-3 bg-white/5 rounded-2xl mb-2 cursor-pointer border border-white/5 hover:border-blue-500/50 transition flex justify-between group items-center";
+    
+    // Tərəqqi göstəricisi (Məsələn: 1/3) - Yalnız Fokus siyahısı üçün
+    const progressHTML = type === 'focus' 
+        ? `<span class="session-progress text-[10px] text-zinc-500 font-mono mt-1 block">${actual}/${estimated} sessiya</span>` 
+        : '';
+
     li.innerHTML = `
         <div class="flex items-center gap-3 flex-1 overflow-hidden">
             <div class="check-box w-4 h-4 rounded-full border border-white/20 flex-shrink-0 transition-all"></div>
-            <span class="task-text text-xs truncate transition-all">${val}</span>
+            <div class="flex flex-col overflow-hidden">
+                <span class="task-text text-xs truncate transition-all">${taskText}</span>
+                ${progressHTML}
+            </div>
         </div>
         <button class="text-red-500 opacity-0 group-hover:opacity-100 transition px-2 text-lg">×</button>
     `;
+
     li.onclick = (e) => { 
         if (e.target.tagName === 'BUTTON') return;
+        
         const span = li.querySelector('.task-text');
         const box = li.querySelector('.check-box');
         
-        if (currentTask === val) {
+        if (currentTask === taskText) {
             li.classList.toggle('completed');
             if (li.classList.contains('completed')) {
                 span.style.textDecoration = "line-through";
@@ -423,20 +489,16 @@ function renderTask(type, val) {
                 box.style.borderColor = "rgba(255,255,255,0.2)";
             }
         } else {
-            currentTask = val; 
+            currentTask = taskText; 
             isBreakMode = (type === 'break'); 
 
-            // --- DÜZƏLİŞ BURADADIR ---
             if (isBreakMode) {
-                // Əgər istirahət taskıdırsa, qısa fasilə vaxtını təyin edirik
                 timeLeft = shortBreakTime * 60; 
             } else {
-                // Əgər iş taskıdırsa, ayarlar panelindəki fokus vaxtını təyin edirik
                 timeLeft = workTime * 60; 
             }
-            // -------------------------
 
-            document.getElementById('activeTaskDisplay').innerText = (isBreakMode ? "İSTİRAHƏT: " : "İŞ: ") + val;
+            document.getElementById('activeTaskDisplay').innerText = (isBreakMode ? "İSTİRAHƏT: " : "İŞ: ") + taskText;
             document.getElementById('activeTaskDisplay').style.color = isBreakMode ? "#10b981" : "#3b82f6";
             
             updateDisplay();
@@ -445,12 +507,14 @@ function renderTask(type, val) {
             li.style.borderColor = isBreakMode ? "#10b981" : "#3b82f6";
         }
     };
+
     li.querySelector('button').onclick = (e) => {
         e.stopPropagation();
-        removeTaskFromLocal(type, val);
+        removeTaskFromLocal(type, taskText);
         li.remove();
-        if(currentTask === val) resetToFocus();
+        if(currentTask === taskText) resetToFocus();
     };
+
     list.appendChild(li);
 }
 
