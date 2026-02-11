@@ -18,7 +18,6 @@ const startSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2568/2
 const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg'); 
 const breakEndSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
 
-const clientId = '96cd2fc06ef74e4aacbf711d56e292d9'; 
 
 // Bu sətir sayt harada açılıbsa (localhost və ya vercel) həmin ünvanı avtomatik götürür
 const clientId = '96cd2fc06ef74e4aacbf711d56e292d9';
