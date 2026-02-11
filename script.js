@@ -19,7 +19,7 @@ const alertSound = new Audio('https://actions.google.com/sounds/v1/alarms/beep_s
 const breakEndSound = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'); 
 
 
-// 1. Dəyişən adını dəqiq yazırıq (böyük I ilə - clientId)
+// 1. Dəyişənləri bir dəfə və dəqiq təyin edirik
 const clientId = '96cd2fc06ef74e4aacbf711d56e292d9'; 
 const redirectUri = window.location.origin.replace(/\/$/, ""); 
 
@@ -31,8 +31,16 @@ const scopes = [
     'user-read-playback-state'
 ];
 
-// 2. URL daxilində dəyişəni eyni adla çağırırıq: ${clientId}
-const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes.join(' '))}`;window.onload = () => {
+// 2. URL-i tam dəqiq formatda qururuq
+// DİQQƏT: ${clientId} və ${encodeURIComponent...} hissələrinə toxunma
+const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes.join(' '))}`;
+
+console.log("Hazırlanmış Auth URL:", authUrl);
+
+
+
+
+window.onload = () => {
     // 1. ADI SORUŞMAQ VƏ BAŞLIQLARI YENİLƏMƏK
     if (!userName) {
         userName = prompt("Zəhmət olmasa adınızı daxil edin:");
