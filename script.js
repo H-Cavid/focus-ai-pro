@@ -32,8 +32,7 @@ const scopes = [
 ];
 
 // 2. URL daxilində dəyişəni eyni adla çağırırıq: ${clientId}
-const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes.join(' '))}`;
-window.onload = () => {
+const authUrl = `https://accounts.spotify.com/authorize?client_id=${clientId}&response_type=token&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes.join(' '))}`;window.onload = () => {
     // 1. ADI SORUŞMAQ VƏ BAŞLIQLARI YENİLƏMƏK
     if (!userName) {
         userName = prompt("Zəhmət olmasa adınızı daxil edin:");
