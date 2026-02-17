@@ -2,6 +2,7 @@ let timeLeft = 25 * 60;
 let timerId = null;
 let isBreakMode = false;
 let currentTask = "";
+let targetTime = null; // Timer-in bitməli olduğu vaxt
 // AD FUNKSİSAYI ÜÇÜN ƏLAVƏ
 let userName = localStorage.getItem('userName') || "";
 
@@ -41,6 +42,58 @@ const breakEndSound = new Audio('https://assets.mixkit.co/active_storage/sfx/286
 
 
 window.onload = () => {
+    // Scroll pozisiyasını yuxarıya təyin et
+    window.scrollTo(0, 0);
+    
+    // Timer-in davam edib-etmədiyini yoxla və bərpa et
+    const savedTargetTime = localStorage.getItem('timerTargetTime');
+    const timerRunning = localStorage.getItem('timerRunning');
+    
+    if (savedTargetTime && timerRunning === 'true') {
+        targetTime = parseInt(savedTargetTime);
+        const savedIsBreakMode = localStorage.getItem('timerIsBreakMode');
+        if (savedIsBreakMode) isBreakMode = savedIsBreakMode === 'true';
+        
+        // Timer-i davam etdir
+        const startBtn = document.getElementById('startBtn');
+        const skipBtn = document.getElementById('skipBtn');
+        if(skipBtn) skipBtn.classList.remove('hidden');
+        
+        timerId = setInterval(() => {
+            const now = Date.now();
+            const difference = Math.round((targetTime - now) / 1000);
+            
+            if (difference <= 0) {
+                timeLeft = 0;
+                updateDisplay();
+                handleSwitch();
+                stopTimer();
+            } else {
+                timeLeft = difference;
+                updateDisplay();
+            }
+        }, 1000);
+        
+        if(startBtn) startBtn.innerText = "DURDUR";
+    }
+    
+    // Spotify playlist seçimini bərpa et
+    const savedPlaylistId = localStorage.getItem('spotifyPlaylistId');
+    if (savedPlaylistId) {
+        const widget = document.getElementById('spotify-widget');
+        if (widget) {
+            widget.src = `https://open.spotify.com/embed/playlist/${savedPlaylistId}?utm_source=generator&theme=0`;
+        }
+    }
+
+    // Tab aktivləşəndə timer-i yenilə
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden && targetTime && timerId) {
+            // Tab aktivləşəndə real vaxtı yenilə
+            updateDisplay();
+        }
+    });
+    
     // 1. ADI SORUŞMAQ VƏ BAŞLIQLARI YENİLƏMƏK
     if (!userName) {
         userName = prompt("Zəhmət olmasa adınızı daxil edin:");
@@ -64,7 +117,7 @@ window.onload = () => {
 
     // 3. İLKİN VAXTI TƏYİN ETMƏK (YENİ HİSSƏ)
     // Əgər fasilə rejimində deyilsə, taymeri daxil edilmiş Fokus dəqiqəsinə qurur
-    if (!isBreakMode) {
+    if (!isBreakMode && !savedTargetTime) {
         timeLeft = workTime * 60;
     }
 
@@ -78,7 +131,7 @@ window.onload = () => {
 
     // Düyməni gizlətmək
     const skipBtn = document.getElementById('skipBtn');
-    if(skipBtn) skipBtn.classList.add('hidden');
+    if(skipBtn && !timerId) skipBtn.classList.add('hidden');
     
     setupEnterKey();
 };
@@ -141,6 +194,17 @@ function updateStats(filter = 'day') {
     let filteredData = sessionHistory.filter(item => {
         const itemDate = new Date(item.date);
         if (filter === 'day') return itemDate.toDateString() === now.toDateString();
+        if (filter === 'week') {
+            // Cari həftənin başlanğıcı (Bazar günü)
+            const weekStart = new Date(now);
+            weekStart.setDate(now.getDate() - now.getDay());
+            weekStart.setHours(0, 0, 0, 0);
+            // Cari həftənin sonu (Şənbə günü)
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekStart.getDate() + 6);
+            weekEnd.setHours(23, 59, 59, 999);
+            return itemDate >= weekStart && itemDate <= weekEnd;
+        }
         if (filter === 'month') return itemDate.getMonth() === now.getMonth() && itemDate.getFullYear() === now.getFullYear();
         if (filter === 'year') return itemDate.getFullYear() === now.getFullYear();
         return true;
@@ -150,7 +214,7 @@ function updateStats(filter = 'day') {
     document.getElementById('totalCount').innerText = displayCount;
     document.getElementById('totalHours').innerText = `${Math.floor((displayCount*25)/60)}s ${(displayCount*25)%60}d`;
     
-    const target = filter === 'day' ? 8 : (filter === 'month' ? 150 : 1000);
+    const target = filter === 'day' ? 8 : (filter === 'week' ? 40 : (filter === 'month' ? 150 : 1000));
     const score = Math.min((filteredData.length / target) * 100, 100).toFixed(0);
     
     if(document.getElementById('productivityScore')) document.getElementById('productivityScore').innerText = score + "%";
@@ -178,6 +242,14 @@ function updateDetailedChart(data, filter) {
         data.forEach(item => {
             const h = new Date(item.date).getHours();
             counts[Math.floor(h/4)]++;
+        });
+    } else if (filter === 'week') {
+        const weekdays = ['Bazar', 'Bazar ertəsi', 'Çərşənbə axşamı', 'Çərşənbə', 'Cümə axşamı', 'Cümə', 'Şənbə'];
+        labels = weekdays;
+        counts = new Array(7).fill(0);
+        data.forEach(item => {
+            const dayOfWeek = new Date(item.date).getDay();
+            counts[dayOfWeek]++;
         });
     } else if (filter === 'month') {
         labels = ['Həftə 1', 'Həftə 2', 'Həftə 3', 'Həftə 4+'];
@@ -284,8 +356,31 @@ async function getFileMotivation(recommendedBreak = "") {
         
         const quotes = await response.json();
         
-        // Random sitat seçimi
-        const randomIndex = Math.floor(Math.random() * quotes.length);
+        // Son istifadə olunan quote-ları localStorage-dan oxu
+        const recentQuotes = JSON.parse(localStorage.getItem('recentQuotes') || '[]');
+        
+        // Mövcud quote-lardan son istifadə olunanları çıxar
+        const availableIndices = quotes.map((q, index) => index)
+            .filter(index => !recentQuotes.includes(index));
+        
+        // Əgər bütün quote-lar istifadə olunubsa, siyahını təmizlə
+        let randomIndex;
+        if (availableIndices.length === 0) {
+            localStorage.removeItem('recentQuotes');
+            randomIndex = Math.floor(Math.random() * quotes.length);
+        } else {
+            // Yeni quote seç
+            randomIndex = availableIndices[Math.floor(Math.random() * availableIndices.length)];
+        }
+        
+        // Seçilmiş quote-u son istifadə olunanlara əlavə et
+        recentQuotes.push(randomIndex);
+        // Son 10 quote-u saxla (çox köhnələrsə təmizlə)
+        if (recentQuotes.length > 10) {
+            recentQuotes.shift();
+        }
+        localStorage.setItem('recentQuotes', JSON.stringify(recentQuotes));
+        
         const msg = quotes[randomIndex].quote; 
 
         if (recommendedBreak) {
@@ -306,6 +401,7 @@ async function getFileMotivation(recommendedBreak = "") {
         }
     } catch (e) {
         console.error("Sitat yükləmə xətası:", e);
+        // Əgər quotes.json hər hansı səbəbdən oxunmazsa, sadəcə sabit fallback mətn göstər
         display.innerHTML = `<div class="px-6 text-center"><span class="text-[13px] text-amber-400 font-bold italic">🤖 Hər bir çətinliyin mərkəzində fürsət dayanır.</span></div>`;
     }
 }
@@ -367,7 +463,14 @@ function handleSwitch() {
         getFileMotivation(randomBreak); 
         
         isBreakMode = true; 
-        timeLeft = breakDuration * 60; 
+        timeLeft = breakDuration * 60;
+        
+        // Yeni timer üçün targetTime yenilə
+        if (timerId) {
+            targetTime = Date.now() + (timeLeft * 1000);
+            localStorage.setItem('timerTargetTime', targetTime.toString());
+            localStorage.setItem('timerIsBreakMode', 'true');
+        }
         
         document.getElementById('mainTitle').innerText = breakTitle;
         document.getElementById('mainTitle').style.color = "#10b981";
@@ -387,7 +490,14 @@ function handleSwitch() {
         localStorage.setItem('sessionHistory', JSON.stringify(sessionHistory));
         
         isBreakMode = false; 
-        timeLeft = workTime * 60; 
+        timeLeft = workTime * 60;
+        
+        // Yeni timer üçün targetTime yenilə
+        if (timerId) {
+            targetTime = Date.now() + (timeLeft * 1000);
+            localStorage.setItem('timerTargetTime', targetTime.toString());
+            localStorage.setItem('timerIsBreakMode', 'false');
+        }
 
         document.getElementById('mainTitle').innerText = `FOCUS AI - ${userName}`;
         document.getElementById('mainTitle').style.color = "#3b82f6";
@@ -405,6 +515,20 @@ function handleSwitch() {
 }
 
 function updateDisplay() {
+    // Əgər timer işləyirsə, real vaxtdan hesabla
+    if (targetTime && timerId) {
+        const now = Date.now();
+        const difference = Math.round((targetTime - now) / 1000);
+        timeLeft = Math.max(0, difference);
+        
+        // Əgər vaxt bitibsə, timer-i dayandır və keçid et
+        if (timeLeft <= 0) {
+            stopTimer();
+            handleSwitch();
+            return;
+        }
+    }
+    
     const m = Math.floor(timeLeft / 60), s = timeLeft % 60;
     document.getElementById('timer').innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
     const maxTime = isBreakMode ? 300 : 1500;
@@ -419,9 +543,12 @@ document.getElementById('startBtn').onclick = function() {
     const skipBtn = document.getElementById('skipBtn');
     if(skipBtn) skipBtn.classList.remove('hidden');
 
-    // --- YENİ MƏNTİQ BURADAN BAŞLAYIR ---
-    // Taymerin bitməli olduğu dəqiq vaxtı hesablayırıq
-    const targetTime = Date.now() + (timeLeft * 1000);
+    // --- REAL VAXT ƏSASLI MƏNTİQ ---
+    // Taymerin bitməli olduğu dəqiq vaxtı hesablayırıq və localStorage-da saxlayırıq
+    targetTime = Date.now() + (timeLeft * 1000);
+    localStorage.setItem('timerTargetTime', targetTime.toString());
+    localStorage.setItem('timerIsBreakMode', isBreakMode.toString());
+    localStorage.setItem('timerRunning', 'true');
 
     timerId = setInterval(() => {
         // Hər saniyə cari vaxtla hədəf vaxt arasındakı fərqi tapırıq
@@ -438,7 +565,7 @@ document.getElementById('startBtn').onclick = function() {
             updateDisplay();
         }
     }, 1000);
-    // --- YENİ MƏNTİQ BURADA BİTİR ---
+    // --- REAL VAXT ƏSASLI MƏNTİQ BİTİR ---
 
     this.innerText = "DURDUR";
 };
@@ -449,7 +576,14 @@ document.getElementById('startBtn').onclick = function() {
 const skipBtn = document.getElementById('skipBtn');
 if(skipBtn) { skipBtn.onclick = handleSwitch; }
 
-function stopTimer() { clearInterval(timerId); timerId = null; document.getElementById('startBtn').innerText = "BAŞLA"; }
+function stopTimer() { 
+    clearInterval(timerId); 
+    timerId = null; 
+    targetTime = null;
+    localStorage.removeItem('timerTargetTime');
+    localStorage.removeItem('timerRunning');
+    document.getElementById('startBtn').innerText = "BAŞLA"; 
+}
 
 function resetToFocus() { 
     isBreakMode = false; currentTask = ""; 
@@ -734,6 +868,41 @@ function changeVolume(val) {
     if (currentPlayingType && ambientSounds[currentPlayingType]) {
         ambientSounds[currentPlayingType].volume = val;
     }
+}
+
+// İstifadəçinin Spotify playlistini əlavə etmək üçün sadə funksiya
+function changePlaylist() {
+    const input = prompt(
+        "Spotify playlist və ya track linkini daxil edin:",
+        "https://open.spotify.com/playlist/37i9dQZF1DWZeKzbUnY3M2"
+    );
+
+    if (!input) return;
+
+    let playlistID = "";
+
+    // Linkdən ID-ni ayırmaq (həm playlist, həm track üçün)
+    if (input.includes("playlist/")) {
+        playlistID = input.split("playlist/")[1].split("?")[0];
+    } else if (input.includes("track/")) {
+        playlistID = input.split("track/")[1].split("?")[0];
+    } else {
+        // Əgər birbaşa ID daxil edilibsə
+        playlistID = input.trim();
+    }
+
+    const widget = document.getElementById("spotify-widget");
+    if (!widget) return;
+
+    // Pleyeri yenilə
+    widget.src = `https://open.spotify.com/embed/playlist/${playlistID}?utm_source=generator&theme=0`;
+
+    // İstifadəçi seçimini yadda saxla
+    localStorage.setItem("spotifyPlaylistId", playlistID);
+
+    alert(
+        "Playlist yeniləndi! Pleyerin içində 'Play' düyməsinə bir dəfə klik etməyiniz kifayətdir."
+    );
 }
 
 
