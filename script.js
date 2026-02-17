@@ -414,12 +414,37 @@ function updateDisplay() {
 document.getElementById('startBtn').onclick = function() {
     if (timerId) { stopTimer(); this.innerText = "DAVAM ET"; return; }
     if (!currentTask) return alert("Zəhmət olmasa bir task seçin!");
+    
     startSound.play().catch(e => console.log("Səs çalınmadı"));
     const skipBtn = document.getElementById('skipBtn');
     if(skipBtn) skipBtn.classList.remove('hidden');
-    timerId = setInterval(() => { timeLeft--; updateDisplay(); if(timeLeft <= 0) handleSwitch(); }, 1000);
+
+    // --- YENİ MƏNTİQ BURADAN BAŞLAYIR ---
+    // Taymerin bitməli olduğu dəqiq vaxtı hesablayırıq
+    const targetTime = Date.now() + (timeLeft * 1000);
+
+    timerId = setInterval(() => {
+        // Hər saniyə cari vaxtla hədəf vaxt arasındakı fərqi tapırıq
+        const now = Date.now();
+        const difference = Math.round((targetTime - now) / 1000);
+
+        if (difference <= 0) {
+            timeLeft = 0;
+            updateDisplay();
+            handleSwitch();
+            stopTimer();
+        } else {
+            timeLeft = difference; // Real vaxt fərqi ilə yeniləyirik
+            updateDisplay();
+        }
+    }, 1000);
+    // --- YENİ MƏNTİQ BURADA BİTİR ---
+
     this.innerText = "DURDUR";
 };
+
+
+
 
 const skipBtn = document.getElementById('skipBtn');
 if(skipBtn) { skipBtn.onclick = handleSwitch; }
