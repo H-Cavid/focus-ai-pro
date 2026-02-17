@@ -40,6 +40,101 @@ const breakEndSound = new Audio('https://assets.mixkit.co/active_storage/sfx/286
 
 
 
+// bu hissedede skipi basmasan fasile vermir
+// window.onload = () => {
+//     // Scroll pozisiyasını yuxarıya təyin et
+//     window.scrollTo(0, 0);
+    
+//     // Timer-in davam edib-etmədiyini yoxla və bərpa et
+//     const savedTargetTime = localStorage.getItem('timerTargetTime');
+//     const timerRunning = localStorage.getItem('timerRunning');
+    
+//     if (savedTargetTime && timerRunning === 'true') {
+//         targetTime = parseInt(savedTargetTime);
+//         const savedIsBreakMode = localStorage.getItem('timerIsBreakMode');
+//         if (savedIsBreakMode) isBreakMode = savedIsBreakMode === 'true';
+        
+//         // Timer-i davam etdir
+//         const startBtn = document.getElementById('startBtn');
+//         const skipBtn = document.getElementById('skipBtn');
+//         if(skipBtn) skipBtn.classList.remove('hidden');
+        
+//         timerId = setInterval(() => {
+//             const now = Date.now();
+//             const difference = Math.round((targetTime - now) / 1000);
+            
+//             if (difference <= 0) {
+//                 timeLeft = 0;
+//                 updateDisplay();
+//                 handleSwitch();
+//                 stopTimer();
+//             } else {
+//                 timeLeft = difference;
+//                 updateDisplay();
+//             }
+//         }, 1000);
+        
+//         if(startBtn) startBtn.innerText = "DURDUR";
+//     }
+    
+//     // Spotify playlist seçimini bərpa et
+//     const savedPlaylistId = localStorage.getItem('spotifyPlaylistId');
+//     if (savedPlaylistId) {
+//         const widget = document.getElementById('spotify-widget');
+//         if (widget) {
+//             widget.src = `https://open.spotify.com/embed/playlist/${savedPlaylistId}?utm_source=generator&theme=0`;
+//         }
+//     }
+
+//     // Tab aktivləşəndə timer-i yenilə
+//     document.addEventListener('visibilitychange', function() {
+//         if (!document.hidden && targetTime && timerId) {
+//             // Tab aktivləşəndə real vaxtı yenilə
+//             updateDisplay();
+//         }
+//     });
+    
+//     // 1. ADI SORUŞMAQ VƏ BAŞLIQLARI YENİLƏMƏK
+//     if (!userName) {
+//         userName = prompt("Zəhmət olmasa adınızı daxil edin:");
+//         if (userName) localStorage.setItem('userName', userName);
+//         else userName = "İstifadəçi";
+//     }
+    
+//     // Başlıqları yeniləyirik
+//     document.getElementById('mainTitle').innerText = `FOCUS AI - ${userName}`;
+//     document.title = `${userName}'s Focus AI - Pro`;
+
+//     // 2. TAYMER AYARLARINI İNPUTLARA YAZDIRMAQ (YENİ HİSSƏ)
+//     // Bu hissə səhifə açılan kimi daxil etdiyin rəqəmləri qutularda göstərir
+//     const workInp = document.getElementById('workInputSetting');
+//     const breakInp = document.getElementById('breakInputSetting');
+//     const longInp = document.getElementById('longBreakInput');
+
+//     if (workInp) workInp.value = workTime;
+//     if (breakInp) breakInp.value = shortBreakTime;
+//     if (longInp) longInp.value = longBreakTime;
+
+//     // 3. İLKİN VAXTI TƏYİN ETMƏK (YENİ HİSSƏ)
+//     // Əgər fasilə rejimində deyilsə, taymeri daxil edilmiş Fokus dəqiqəsinə qurur
+//     if (!isBreakMode && !savedTargetTime) {
+//         timeLeft = workTime * 60;
+//     }
+
+//     // 4. MÖVCUD FUNKSİYALARI ÇAĞIRMAQ
+//     checkNewDay(); 
+//     initCharts();
+//     loadTasks('focus');
+//     loadTasks('break');
+//     updateStats('day'); 
+//     updateDisplay(); // Ekranda dərhal yeni vaxtı (məsələn 25:00) göstərir
+
+//     // Düyməni gizlətmək
+//     const skipBtn = document.getElementById('skipBtn');
+//     if(skipBtn && !timerId) skipBtn.classList.add('hidden');
+    
+//     setupEnterKey();
+// };
 
 window.onload = () => {
     // Scroll pozisiyasını yuxarıya təyin et
@@ -64,10 +159,18 @@ window.onload = () => {
             const difference = Math.round((targetTime - now) / 1000);
             
             if (difference <= 0) {
+                // --- PROBLEMİN HƏLLİ BURADADIR ---
+                clearInterval(timerId); // İntervalı dərhal kəsirik
+                timerId = null;
+                localStorage.setItem('timerRunning', 'false');
+
                 timeLeft = 0;
                 updateDisplay();
-                handleSwitch();
-                stopTimer();
+                handleSwitch(); // Keçidi edirik (istirahət vaxtını təyin edir)
+                
+                if(startBtn) startBtn.innerText = "BAŞLA";
+                // stopTimer() çağırılmır ki, vaxtı 25-ə qaytarmasın
+                // ---------------------------------
             } else {
                 timeLeft = difference;
                 updateDisplay();
@@ -89,7 +192,6 @@ window.onload = () => {
     // Tab aktivləşəndə timer-i yenilə
     document.addEventListener('visibilitychange', function() {
         if (!document.hidden && targetTime && timerId) {
-            // Tab aktivləşəndə real vaxtı yenilə
             updateDisplay();
         }
     });
@@ -101,12 +203,10 @@ window.onload = () => {
         else userName = "İstifadəçi";
     }
     
-    // Başlıqları yeniləyirik
     document.getElementById('mainTitle').innerText = `FOCUS AI - ${userName}`;
     document.title = `${userName}'s Focus AI - Pro`;
 
-    // 2. TAYMER AYARLARINI İNPUTLARA YAZDIRMAQ (YENİ HİSSƏ)
-    // Bu hissə səhifə açılan kimi daxil etdiyin rəqəmləri qutularda göstərir
+    // 2. TAYMER AYARLARINI İNPUTLARA YAZDIRMAQ
     const workInp = document.getElementById('workInputSetting');
     const breakInp = document.getElementById('breakInputSetting');
     const longInp = document.getElementById('longBreakInput');
@@ -115,8 +215,7 @@ window.onload = () => {
     if (breakInp) breakInp.value = shortBreakTime;
     if (longInp) longInp.value = longBreakTime;
 
-    // 3. İLKİN VAXTI TƏYİN ETMƏK (YENİ HİSSƏ)
-    // Əgər fasilə rejimində deyilsə, taymeri daxil edilmiş Fokus dəqiqəsinə qurur
+    // 3. İLKİN VAXTI TƏYİN ETMƏK
     if (!isBreakMode && !savedTargetTime) {
         timeLeft = workTime * 60;
     }
@@ -127,11 +226,10 @@ window.onload = () => {
     loadTasks('focus');
     loadTasks('break');
     updateStats('day'); 
-    updateDisplay(); // Ekranda dərhal yeni vaxtı (məsələn 25:00) göstərir
+    updateDisplay();
 
-    // Düyməni gizlətmək
-    const skipBtn = document.getElementById('skipBtn');
-    if(skipBtn && !timerId) skipBtn.classList.add('hidden');
+    const skipBtnElement = document.getElementById('skipBtn');
+    if(skipBtnElement && !timerId) skipBtnElement.classList.add('hidden');
     
     setupEnterKey();
 };
@@ -535,33 +633,89 @@ function updateDisplay() {
     document.getElementById('progress').style.strokeDashoffset = 848 - (timeLeft / maxTime) * 848;
 }
 
+// burda skipi basmiyanda istirahet vaxti vermir
+// document.getElementById('startBtn').onclick = function() {
+//     if (timerId) { stopTimer(); this.innerText = "DAVAM ET"; return; }
+//     if (!currentTask) return alert("Zəhmət olmasa bir task seçin!");
+    
+//     startSound.play().catch(e => console.log("Səs çalınmadı"));
+//     const skipBtn = document.getElementById('skipBtn');
+//     if(skipBtn) skipBtn.classList.remove('hidden');
+
+//     // --- REAL VAXT ƏSASLI MƏNTİQ ---
+//     // Taymerin bitməli olduğu dəqiq vaxtı hesablayırıq və localStorage-da saxlayırıq
+//     targetTime = Date.now() + (timeLeft * 1000);
+//     localStorage.setItem('timerTargetTime', targetTime.toString());
+//     localStorage.setItem('timerIsBreakMode', isBreakMode.toString());
+//     localStorage.setItem('timerRunning', 'true');
+
+//     timerId = setInterval(() => {
+//         // Hər saniyə cari vaxtla hədəf vaxt arasındakı fərqi tapırıq
+//         const now = Date.now();
+//         const difference = Math.round((targetTime - now) / 1000);
+
+//         if (difference <= 0) {
+//             timeLeft = 0;
+//             updateDisplay();
+//             handleSwitch();
+//             stopTimer();
+//         } else {
+//             timeLeft = difference; // Real vaxt fərqi ilə yeniləyirik
+//             updateDisplay();
+//         }
+        
+//     }, 1000);
+//     // --- REAL VAXT ƏSASLI MƏNTİQ BİTİR ---
+
+//     this.innerText = "DURDUR";
+// };
+
 document.getElementById('startBtn').onclick = function() {
-    if (timerId) { stopTimer(); this.innerText = "DAVAM ET"; return; }
+    // Əgər taymer işləyirsə, onu dayandırırıq
+    if (timerId) { 
+        stopTimer(); 
+        this.innerText = "DAVAM ET"; 
+        return; 
+    }
+    
+    // Task seçilməyibsə xəbərdarlıq edirik
     if (!currentTask) return alert("Zəhmət olmasa bir task seçin!");
     
+    // Başlanğıc səsini çalırıq
     startSound.play().catch(e => console.log("Səs çalınmadı"));
+    
     const skipBtn = document.getElementById('skipBtn');
     if(skipBtn) skipBtn.classList.remove('hidden');
 
     // --- REAL VAXT ƏSASLI MƏNTİQ ---
-    // Taymerin bitməli olduğu dəqiq vaxtı hesablayırıq və localStorage-da saxlayırıq
     targetTime = Date.now() + (timeLeft * 1000);
     localStorage.setItem('timerTargetTime', targetTime.toString());
     localStorage.setItem('timerIsBreakMode', isBreakMode.toString());
     localStorage.setItem('timerRunning', 'true');
 
     timerId = setInterval(() => {
-        // Hər saniyə cari vaxtla hədəf vaxt arasındakı fərqi tapırıq
         const now = Date.now();
         const difference = Math.round((targetTime - now) / 1000);
 
         if (difference <= 0) {
+            // 1. İntervalı dərhal dayandırırıq (Sığorta)
+            clearInterval(timerId);
+            timerId = null;
+            localStorage.setItem('timerRunning', 'false');
+
+            // 2. Vaxtı sıfırlayıb ekranı yeniləyirik
             timeLeft = 0;
             updateDisplay();
+
+            // 3. handleSwitch funksiyasını çağırırıq (Bu funksiya fasilə vaxtını təyin edir)
             handleSwitch();
-            stopTimer();
+
+            // 4. Düymənin yazısını düzəldirik
+            this.innerText = "BAŞLA";
+            
+            // DİQQƏT: Burada stopTimer() çağırmırıq!
         } else {
-            timeLeft = difference; // Real vaxt fərqi ilə yeniləyirik
+            timeLeft = difference;
             updateDisplay();
         }
     }, 1000);
@@ -569,7 +723,6 @@ document.getElementById('startBtn').onclick = function() {
 
     this.innerText = "DURDUR";
 };
-
 
 
 
